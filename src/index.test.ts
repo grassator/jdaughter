@@ -1,5 +1,5 @@
 import * as assert from 'assert'
-import { decoder } from './index'
+import { decoder, field } from './index'
 
 describe('jdaughter', () => {
   describe('null', () => {
@@ -57,9 +57,27 @@ describe('jdaughter', () => {
         decoder('array', decoder('number')).decode('32')
       }, TypeError)
     })
-    it('should throw when it does not an array of wrong elements', () => {
+    it('should throw when it is not an array of wrong elements', () => {
       assert.throws(() => {
         decoder('array', decoder('number')).decode('["foo", "bar"]')
+      }, TypeError)
+    })
+  })
+  describe('object', () => {
+    it('should support empty object parsing', () => {
+      assert.deepStrictEqual(
+        decoder('object').decode('{}'),
+        {}
+      )
+    })
+    it('should throw when it is a primitive type', () => {
+      assert.throws(() => {
+        decoder('object').decode('123')
+      }, TypeError)
+    })
+    it('should throw when it is an array', () => {
+      assert.throws(() => {
+        decoder('object').decode('[1, 2]')
       }, TypeError)
     })
   })
