@@ -1,14 +1,35 @@
 import * as assert from 'assert'
-import { decode, field } from './index'
+import { decoder } from './index'
 
 describe('jdaughter', () => {
-  it('should typecheck', () => {
-    const fooBarBuzzDecoder = decode('object',
-      field('foo', decode.number,
-      field('bar', decode.string,
-      field('buzz', decode.number
-    ))))
-    const value: typeof fooBarBuzzDecoder.Type = fooBarBuzzDecoder.decode('fosodf')
-    assert(!(value.foo + value.buzz))
+  describe('null', () => {
+    it('should correctly parse', () => {
+      assert.strictEqual(decoder('null').decode('null'), null)
+    })
+    it('should throw when it does not parse', () => {
+      assert.throws(() => {
+        decoder('null').decode('"foo"')
+      }, TypeError)
+    })
+  })
+  describe('number', () => {
+    it('should correctly parse', () => {
+      assert.strictEqual(decoder('number').decode('42'), 42)
+    })
+    it('should throw when it does not parse', () => {
+      assert.throws(() => {
+        decoder('number').decode('"foo"')
+      }, TypeError)
+    })
+  })
+  describe('string', () => {
+    it('should correctly parse', () => {
+      assert.strictEqual(decoder('string').decode('"foo"'), 'foo')
+    })
+    it('should throw when it does not parse', () => {
+      assert.throws(() => {
+        decoder('string').decode('false')
+      }, TypeError)
+    })
   })
 })
