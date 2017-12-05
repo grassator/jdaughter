@@ -1,0 +1,30 @@
+{
+  "name": "jdaughter",
+  "version": "0.0.1",
+  "description": "Typesafe JSON decoding for TypeScript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "prepublishOnly": "npm test && npm run build",
+    "build": "tsc",
+    "test": "mocha -r ts-node/register src/**/*.test.ts"
+  },
+  "keywords": [
+    "typescript"
+  ],
+  "files": [
+    "dist/*"
+  ],
+  "repository": "git@github.com:grassator/jdaughter.git",
+  "author": "Dmitriy Kubyshkin <dmitriy@kubyshkin.name>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/mocha": "^2.2.44",
+    "@types/node": "^8.0.53",
+    "mocha": "^4.0.1",
+    "ts-node": "^3.3.0",
+    "tslint": "^5.8.0",
+    "tslint-config-standard": "^7.0.0",
+    "typescript": "^2.6.2"
+  }
+}
