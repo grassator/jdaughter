@@ -41,6 +41,18 @@ function dateChecker (value: any): Date {
   return new Date(value)
 }
 
+function arrayChecker<T> (elementDecoder: Decoder<T>): (value: any) => T[] {
+  return function (value: any): T[] {
+    if (!Array.isArray(value)) {
+      throw new TypeError(`While decoding JSON, expected an array, got ${value}`)
+    }
+    for (let i = 0; i < value.length; ++i) {
+      (elementDecoder as any)._decode(value[i])
+    }
+    return value
+  }
+}
+
 export class FieldDecoder<Value> extends Decoder<Value> {}
 
 function decoderFactory (of: 'null'): Decoder<null>
@@ -57,7 +69,9 @@ function decoderFactory <T, U> (of: PrimitiveTypeNames, next?: Decoder<U>): Deco
   } else if (of === 'boolean' || of === 'number' || of === 'string') {
     (decoder as any)._decode = primitiveChecker(of)
   } else if (of === 'date') {
-    (decoder as any).decode = dateChecker
+    (decoder as any)._decode = dateChecker
+  } else if (of === 'array' && next) {
+    (decoder as any)._decode = arrayChecker(next)
   }
 
   return decoder

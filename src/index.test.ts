@@ -35,13 +35,31 @@ describe('jdaughter', () => {
   describe('Date', () => {
     it('should correctly parse timezone ISO 8601 dates', () => {
       assert.deepEqual(
-        decoder('date').decode('2012-04-21T18:25:43-05:00'),
+        decoder('date').decode('"2012-04-21T18:25:43-05:00"'),
         new Date('2012-04-21T18:25:43-05:00')
       )
     })
     it('should throw when it does not parse an arbitrary string', () => {
       assert.throws(() => {
         decoder('date').decode('false')
+      }, TypeError)
+    })
+  })
+  describe('array', () => {
+    it('should correctly parse', () => {
+      assert.deepStrictEqual(
+        decoder('array', decoder('number')).decode('[1, 2, 3]'),
+        [1, 2, 3]
+      )
+    })
+    it('should throw when it the value is not an array', () => {
+      assert.throws(() => {
+        decoder('array', decoder('number')).decode('32')
+      }, TypeError)
+    })
+    it('should throw when it does not an array of wrong elements', () => {
+      assert.throws(() => {
+        decoder('array', decoder('number')).decode('["foo", "bar"]')
       }, TypeError)
     })
   })
