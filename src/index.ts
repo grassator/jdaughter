@@ -15,6 +15,8 @@ export class Decoder<Value> {
   }
 }
 
+const ISO_8601_REGEX = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(([+-]\d\d:\d\d)|Z)?$/i
+
 function nullChecker (value: any): null {
   if (value !== null) {
     throw new TypeError(`While decoding JSON, expected a null, got ${value}`)
@@ -29,6 +31,14 @@ function primitiveChecker (type: 'boolean' | 'number' | 'string') {
     }
     return value
   } as any
+}
+
+function dateChecker (value: any): Date {
+  if (typeof value !== 'string' || !ISO_8601_REGEX.test(value)) {
+    throw new TypeError(`While decoding JSON, expected a ISO 8601 date, got ${value}`)
+  }
+
+  return new Date(value)
 }
 
 export class FieldDecoder<Value> extends Decoder<Value> {}
@@ -46,6 +56,8 @@ function decoderFactory <T, U> (of: PrimitiveTypeNames, next?: Decoder<U>): Deco
     (decoder as any)._decode = nullChecker
   } else if (of === 'boolean' || of === 'number' || of === 'string') {
     (decoder as any)._decode = primitiveChecker(of)
+  } else if (of === 'date') {
+    (decoder as any).decode = dateChecker
   }
 
   return decoder

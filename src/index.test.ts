@@ -32,4 +32,17 @@ describe('jdaughter', () => {
       }, TypeError)
     })
   })
+  describe('Date', () => {
+    it('should correctly parse timezone ISO 8601 dates', () => {
+      assert.deepEqual(
+        decoder('date').decode('2012-04-21T18:25:43-05:00'),
+        new Date('2012-04-21T18:25:43-05:00')
+      )
+    })
+    it('should throw when it does not parse an arbitrary string', () => {
+      assert.throws(() => {
+        decoder('date').decode('false')
+      }, TypeError)
+    })
+  })
 })
