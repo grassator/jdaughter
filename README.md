@@ -36,8 +36,8 @@ All of this things may result in security issues or simply incorrect behavior of
 ## Planned Features
 
 * Parsing of basic rigid structures and types (done)
-* Mapping of field names (e.g. camelCase to snake_case)
-* Objects as maps from string to some time
+* Mapping of field names (e.g. camelCase to snake_case) (done)
+* Objects as maps from string to some type
 * Arbitrary data transformation
 
 ## License

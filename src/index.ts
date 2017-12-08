@@ -32,14 +32,19 @@ export abstract class AbstractDecoder<Value> {
 }
 
 export class ObjectDecoder<Value> extends AbstractDecoder<Value> {
-  field <Prev, FieldValue, Key extends string> (this: ObjectDecoder<Prev>, name: Key, fieldValue: AbstractDecoder<FieldValue>)
-  : ObjectDecoder<Prev & {[key in Key]: FieldValue}> {
+  field <Prev, FieldValue, Key extends string> (
+    this: ObjectDecoder<Prev>,
+    name: Key,
+    fieldValue: AbstractDecoder<FieldValue>,
+    mapName?: (k: Key) => string
+  ): ObjectDecoder<Prev & {[key in Key]: FieldValue}> {
     const decoder: ObjectDecoder<Prev & {[key in Key]: FieldValue}> = Object.create(ObjectDecoder.prototype)
     bindDecode(decoder)
 
     decoder.decodeParsed = (value) => {
       const partialValue = this.decodeParsed(value) as any
-      partialValue[name] = (fieldValue as any).decodeParsed(value[name])
+      const mappedName = (typeof mapName === 'function') ? mapName(name) : name
+      partialValue[name] = (fieldValue as any).decodeParsed(value[mappedName])
       return partialValue
     }
 

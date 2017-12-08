@@ -170,6 +170,17 @@ describe('jdaughter', () => {
         expected
       )
     })
+    it('should support name mapping', () => {
+      const expected = {
+        prefix_buzz: 'asdf'
+      }
+      assert.deepStrictEqual(
+        D.object
+          .field('buzz', D.string, name => `prefix_${name}`)
+          .decode(JSON.stringify(expected)),
+        { buzz: 'asdf' }
+      )
+    })
   })
   describe('decodeParsed', () => {
     it('should transform the values as specified', () => {
