@@ -33,10 +33,6 @@ All of this things may result in security issues or simply incorrect behavior of
 
 `jdaughter` fixes that by providing runtime type assertions through an easy-to-use API, so it is extremely useful even outside of the TypeScript scenario. It also has zero dependencies and can be used in any ECMAScript 2015 compatible (or transpiled) environment. 
 
-## Planned Features
-
-* Arbitrary data transformation
-
 ## Usage
 
 ### Importing
@@ -175,6 +171,19 @@ const result = decoder.decode(JSON.stringify({
 ```
 
 When used in TypeScript this will produce correct indexed type `{[key: string]: boolean}`
+
+### Writing a Custom Decoder
+
+While built in decoder cover a lot of standard use-cases, it is occasionally desirable to decode a value in a particular way. Let's assume that you have to deal with a bad API that returns array of numbers, as a comma-separated JSON string. Here's how one might write a decoder for this:
+
+```js
+const decoder = D.custom((value) => {
+  const raw = D.string.decodeParsed(value)
+  return raw.split(',').map(Number)
+}).decode('"1,2,3"')
+```
+
+There are two things to note here. Firstly, it is possible to use `decodeParsed` functions from existing decoders to ensure that value has a certain type and save on some boilerplate. Secondly, the responsibility for ensuring all the invariants fully goes to you, for example in this case there is no check that we have a valid number, so you might get `NaN`s, which you should protect from if they are undesirable.
 
 ## License
 

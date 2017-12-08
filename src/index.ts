@@ -135,6 +135,14 @@ export class Decoder<Value> extends AbstractDecoder<Value> {
     return decoder
   }
 
+  static custom <Value> (decode: (value: any) => Value): Decoder<Value> {
+    const decoder: Decoder<Value> = Object.create(Decoder.prototype)
+    bindDecode(decoder)
+    decoder.decodeParsed = decode
+
+    return decoder
+  }
+
   decodeParsed (value: any): Value {
     throw new TypeError('`decodeParsed` should never be called on non-specialized decoders')
   }

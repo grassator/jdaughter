@@ -209,6 +209,23 @@ describe('jdaughter', () => {
       }, TypeError)
     })
   })
+  describe('custom', () => {
+    const decoder = (value: any): number[] => {
+      const raw = D.string.decodeParsed(value)
+      return raw.split(',').map(Number)
+    }
+    it('should support custom decoders', () => {
+      assert.deepStrictEqual(
+        D.custom(decoder).decode('"1,2,3"'),
+        [1, 2, 3]
+      )
+    })
+    it('should throw if custom decoder function throws', () => {
+      assert.throws(() => {
+        D.custom(decoder).decode('123')
+      }, TypeError)
+    })
+  })
   describe('decodeParsed', () => {
     it('should transform the values as specified', () => {
       const date = new Date('2012-04-21T18:25:43-05:00')
