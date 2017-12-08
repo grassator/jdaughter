@@ -2,7 +2,7 @@ function checkPrimitive <Value> (type: 'boolean' | 'number' | 'string')
   : (value: any) => Value {
   return (value: any) => {
     if (typeof value !== type) {
-      throw new TypeError(`Expected value to be an object, got ${typeof value}`)
+      throw new TypeError(`Expected value to be an ${type}, got ${typeof value}`)
     }
     return value
   }
@@ -106,6 +106,30 @@ export class Decoder<Value> extends AbstractDecoder<Value> {
       }
 
       return value.map(of.decodeParsed)
+    }
+
+    return decoder
+  }
+
+  static map <Value> (from: Decoder<string>, to: Decoder<Value>): Decoder<{[key: string]: Value}>
+  static map <Value> (from: Decoder<number>, to: Decoder<Value>): Decoder<{[key: number]: Value}>
+  static map <Value> (from: Decoder<string | number>, to: Decoder<Value>)
+    : Decoder <object> {
+    const decoder: Decoder<object> = Object.create(Decoder.prototype)
+    bindDecode(decoder)
+
+    decoder.decodeParsed = (value) => {
+      Decoder.object.decodeParsed(value)
+      const result: {[key: string]: Value} = {}
+
+      for (let key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          const normalizedKey = from === Decoder.number ? Number(key) : key
+          result[from.decodeParsed(normalizedKey)] = to.decodeParsed(value[key])
+        }
+      }
+
+      return result
     }
 
     return decoder

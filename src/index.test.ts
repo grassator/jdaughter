@@ -182,6 +182,33 @@ describe('jdaughter', () => {
       )
     })
   })
+  describe('map', () => {
+    it('should support objects as maps from strings to values', () => {
+      const value = {
+        foo: 10,
+        bar: 20
+      }
+      assert.deepStrictEqual(
+        D.map(D.string, D.number).decode(JSON.stringify(value)),
+        value
+      )
+    })
+    it('should support objects as maps from numbers to values', () => {
+      const value = {
+        10: 'a',
+        20: 'b'
+      }
+      assert.deepStrictEqual(
+        D.map(D.number, D.string).decode(JSON.stringify(value)),
+        value
+      )
+    })
+    it('should throw values of the fields do not match', () => {
+      assert.throws(() => {
+        D.map(D.string, D.number).decode(JSON.stringify({ foo: 'bar' }))
+      }, TypeError)
+    })
+  })
   describe('decodeParsed', () => {
     it('should transform the values as specified', () => {
       const date = new Date('2012-04-21T18:25:43-05:00')

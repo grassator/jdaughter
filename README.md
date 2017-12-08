@@ -35,7 +35,6 @@ All of this things may result in security issues or simply incorrect behavior of
 
 ## Planned Features
 
-* Objects as maps from string to some type
 * Arbitrary data transformation
 
 ## Usage
@@ -162,6 +161,20 @@ const decoder =
       .field('fooBar', Decoder.string, snakeCase)
 const result = decoder.decode('{"foo_bar": "foo"}')
 ```
+
+### Map Decoder
+
+Some APIs use JSON objects as maps either from strings or numbers to some values, for example strings to booleans:
+
+```js
+const decoder = Decoder.map(D.string, D.boolean)
+const result = decoder.decode(JSON.stringify({
+  foo: false,
+  bar: true
+}))
+```
+
+When used in TypeScript this will produce correct indexed type `{[key: string]: boolean}`
 
 ## License
 
