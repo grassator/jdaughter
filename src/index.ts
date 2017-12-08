@@ -10,6 +10,10 @@ function checkPrimitive <Value> (type: 'boolean' | 'number' | 'string')
 
 const ISO_8601_REGEX = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(([+-]\d\d:\d\d)|Z)?$/i
 
+function bindDecode<T> (d: { decode: (value: any) => T }): void {
+  d.decode = d.decode.bind(d)
+}
+
 export abstract class AbstractDecoder<Value> {
   get Type (): Value {
     throw new TypeError('`Type` should never be used at runtime and only in `typeof` expression')
@@ -31,6 +35,7 @@ export class ObjectDecoder<Value> extends AbstractDecoder<Value> {
   field <Prev, FieldValue, Key extends string> (this: ObjectDecoder<Prev>, name: Key, fieldValue: AbstractDecoder<FieldValue>)
   : ObjectDecoder<Prev & {[key in Key]: FieldValue}> {
     const decoder: ObjectDecoder<Prev & {[key in Key]: FieldValue}> = Object.create(ObjectDecoder.prototype)
+    bindDecode(decoder)
 
     decoder.decodeParsed = (value) => {
       const partialValue = this.decodeParsed(value) as any
@@ -87,6 +92,7 @@ export class Decoder<Value> extends AbstractDecoder<Value> {
 
   static array <Value> (of: Decoder<Value>): Decoder<Value[]> {
     const decoder: Decoder<Value[]> = Object.create(Decoder.prototype)
+    bindDecode(decoder)
 
     decoder.decodeParsed = (value) => {
       if (!Array.isArray(value)) {
@@ -103,3 +109,6 @@ export class Decoder<Value> extends AbstractDecoder<Value> {
     throw new TypeError('`decodeParsed` should never be called on non-specialized decoders')
   }
 }
+
+[Decoder.null, Decoder.boolean, Decoder.number, Decoder.string, Decoder.date, Decoder.object]
+  .forEach(bindDecode)

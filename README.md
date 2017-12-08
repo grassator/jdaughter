@@ -15,7 +15,7 @@ const decoder =
 
 fetch('https://httpbin.org/anything')
     .then(response => response.text())
-    .then(json => decoder.decode(json))
+    .then(decoder.decode)
     .then(data => {
       // Here the data has correct type of
       // {origin: string, headers: {Host: string}}

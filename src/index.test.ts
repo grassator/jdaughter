@@ -21,6 +21,13 @@ describe('jdaughter', () => {
         D.null.decode(JSON.stringify('foo'))
       }, TypeError)
     })
+    it('should work as a stand-alone function (and not method)', () => {
+      const decode = D.null.decode
+      assert.strictEqual(
+        decode(JSON.stringify(null)),
+        null
+      )
+    })
   })
   describe('number', () => {
     it('should correctly parse', () => {
@@ -30,6 +37,13 @@ describe('jdaughter', () => {
       assert.throws(() => {
         D.number.decode(JSON.stringify('foo'))
       }, TypeError)
+    })
+    it('should work as a stand-alone function (and not method)', () => {
+      const decode = D.number.decode
+      assert.strictEqual(
+        decode(JSON.stringify(42)),
+        42
+      )
     })
   })
   describe('string', () => {
@@ -41,11 +55,18 @@ describe('jdaughter', () => {
         D.string.decode(JSON.stringify(false))
       }, TypeError)
     })
+    it('should work as a stand-alone function (and not method)', () => {
+      const decode = D.string.decode
+      assert.strictEqual(
+        decode(JSON.stringify('foo')),
+        'foo'
+      )
+    })
   })
   describe('Date', () => {
     it('should correctly parse timezone ISO 8601 dates', () => {
       const date = new Date('2012-04-21T18:25:43-05:00')
-      assert.deepEqual(
+      assert.deepStrictEqual(
         D.date.decode(JSON.stringify(date.toISOString())),
         date
       )
@@ -54,6 +75,14 @@ describe('jdaughter', () => {
       assert.throws(() => {
         D.date.decode(JSON.stringify(false))
       }, TypeError)
+    })
+    it('should work as a stand-alone function (and not method)', () => {
+      const date = new Date('2012-04-21T18:25:43-05:00')
+      const decode = D.date.decode
+      assert.deepStrictEqual(
+        decode(JSON.stringify(date.toISOString())),
+        date
+      )
     })
   })
   describe('array', () => {
@@ -72,6 +101,16 @@ describe('jdaughter', () => {
       assert.throws(() => {
         D.array(D.number).decode(JSON.stringify(['foo', 'bar']))
       }, TypeError)
+    })
+    it('should work as a stand-alone function (and not method)', () => {
+      const decode = D.array(D.number).decode
+      const expected = {
+        buzz: 'asdf'
+      }
+      assert.deepStrictEqual(
+        decode(JSON.stringify([1, 2, 3])),
+        [1, 2, 3]
+      )
     })
   })
   describe('object', () => {
@@ -119,6 +158,18 @@ describe('jdaughter', () => {
         { buzz: 'asdf' }
       )
     })
+    it('should work as a stand-alone function (and not method)', () => {
+      const decode = D.object
+        .field('buzz', D.string)
+        .decode
+      const expected = {
+        buzz: 'asdf'
+      }
+      assert.deepStrictEqual(
+        decode(JSON.stringify(expected)),
+        expected
+      )
+    })
   })
   describe('decodeParsed', () => {
     it('should transform the values as specified', () => {
@@ -132,6 +183,10 @@ describe('jdaughter', () => {
       assert.throws(() => {
         D.date.decodeParsed('asdf')
       }, TypeError)
+    })
+    it('should work as a stand-alone function (and not method)', () => {
+      const decode = D.boolean.decodeParsed
+      assert.strictEqual(decode(false), false)
     })
   })
 })
