@@ -120,4 +120,18 @@ describe('jdaughter', () => {
       )
     })
   })
+  describe('decodeParsed', () => {
+    it('should transform the values as specified', () => {
+      const date = new Date('2012-04-21T18:25:43-05:00')
+      assert.deepEqual(
+        D.date.decodeParsed(date.toISOString()),
+        date
+      )
+    })
+    it('should throw when it does not parse an arbitrary string', () => {
+      assert.throws(() => {
+        D.date.decodeParsed('asdf')
+      }, TypeError)
+    })
+  })
 })

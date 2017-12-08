@@ -24,7 +24,7 @@ export abstract class AbstractDecoder<Value> {
     return this.decodeParsed(JSON.parse(json))
   }
 
-  protected abstract decodeParsed (value: any): Value
+  abstract decodeParsed (value: any): Value
 }
 
 export class ObjectDecoder<Value> extends AbstractDecoder<Value> {
@@ -41,7 +41,7 @@ export class ObjectDecoder<Value> extends AbstractDecoder<Value> {
     return decoder
   }
 
-  protected decodeParsed (value: any): Value {
+  decodeParsed (value: any): Value {
     if (typeof value !== 'object') {
       throw new TypeError(`Expected value to be an object, got ${typeof value}`)
     }
@@ -99,7 +99,7 @@ export class Decoder<Value> extends AbstractDecoder<Value> {
     return decoder
   }
 
-  protected decodeParsed (value: any): Value {
-    throw new TypeError('`decodeParsed` should never be called directly')
+  decodeParsed (value: any): Value {
+    throw new TypeError('`decodeParsed` should never be called on non-specialized decoders')
   }
 }
