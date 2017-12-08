@@ -28,6 +28,7 @@ export abstract class AbstractDecoder<Value> {
     return this.decodeParsed(JSON.parse(json))
   }
 
+  /** @throws TypeError in case decoding fails */
   abstract decodeParsed (value: any): Value
 }
 

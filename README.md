@@ -35,10 +35,133 @@ All of this things may result in security issues or simply incorrect behavior of
 
 ## Planned Features
 
-* Parsing of basic rigid structures and types (done)
-* Mapping of field names (e.g. camelCase to snake_case) (done)
 * Objects as maps from string to some type
 * Arbitrary data transformation
+
+## Usage
+
+### Importing
+
+Currently `jdaughter` has a single named export `Decoder`, and can be imported as follows in Commonjs:
+
+```js
+const { Decoder } = require('jdaughter')
+```
+
+Or like this in ES2015 modules or TypeScript:
+
+```js
+import { Decoder } from 'jdaughter'
+```
+
+Most of the time it is convenient to have an aliased input to save some typing and make decoders more readable:
+
+```js
+import { Decoder as D } from 'jdaughter'
+```
+
+### What is a Decoder?
+
+In the vocabulary of the library, a decoder is simply an object with the following methods and fields:
+
+```typescript
+interface IDecoder<DecodedType> {
+  Type: DecodedType
+  
+  /** @throws TypeError in case decoding fails */
+  decode (json: string): DecodedType
+  
+  /** @throws TypeError in case decoding fails */
+  decodeParsed (value: any): DecodedType
+}
+```
+
+`decode` methods expected a raw JSON *string* and then either returns a fully decoded value of the `DecodedType`, or throws a `TypeError`. This is preferable way to use `jdaughter` as it can allows for future performance optimizations.
+
+`decodeParsed` is very much the same, except it takes in an already `JSON.parse`d value and then does a decoding pass over it. This method should only be used if you can not get raw JSON string out of the libraries you use.
+
+The reason it makes sense to decode even already parsed object is that besides just checking the types, decoder also does data transformation, e.g. parsing out a date or mapping field names.
+
+`Type` field is slightly interesting. If you try to access this field at runtime, it will just throw, which may seem rather strange and not very useful. This field is only used in TypeScript for being able to specify the return type of the decoder through `typeof` operator:
+
+```typescript
+import { Decoder as D } from 'jdaughter'
+
+const decoder = D.array(D.number)
+const result: typeof decoder.Type = decoder.decode('[1, 2, 3]')
+// type of result is number[] as it should be
+```   
+
+### Primitive Decoders
+
+To be able to decode an ensure the basic JSON types, there are pre-defined decoders defined as fields on the `Decoder` object:
+
+```js
+Decoder.null
+Decoder.boolean
+Decoder.number
+Decoder.string
+```
+
+### `Date` Decoder
+
+It is quite common for APIs to provide date inside a JSON response, however JSON does not provide one. `Decoder.date` expects a string JSON value formatted as ISO 8601.
+
+```js
+const date = Decoder.date.decode('"2017-12-03T18:25:43+02:00"')
+```
+
+### Array Decoder
+
+Allows to decode arrays of another type, which can be primitive:
+
+```js
+const arrayOfNumbersDecoder = Decoder.array(Decoder.number)
+const result = numberArrayDecoder.decode('[1, 2, 3]')
+```
+
+Or it can be complex type, including a nested arrays
+
+
+```js
+const arrayOfArraysOfNumbersDecoder = Decoder.array(
+  Decoder.array(Decoder.number)
+)
+const result = Decoder.array(Decoder.number).decode('[[1], [2], [3]]')
+```
+
+### Object Decoder
+
+Allows to decode objects with a pre-defined sets of fields, including nested objects or arrays:
+
+```js
+const decoder =
+    Decoder.object
+      .field('foo', Decoder.string)
+      .field('bar',
+        Decoder.object
+          .field('nested_bar', Decoder.string)
+      )
+      .field('arr', Decoder.array(Decoder.number))
+const result = decoder.decode(JSON.stringify({
+  foo: 'foo',
+  bar: {
+    'nested_bar': 'bar'
+  },
+  arr: [1, 2, 3]
+}))
+```
+
+It is also possible to specify a mapping function from the field name you want in the decoded object to the one in the raw JSON. For example it is quite common for a JSON apis to have snake_case fields, while it is preferred to have camelCase in JavaScript:
+
+```js
+import { snakeCase } from 'lodash'
+
+const decoder =
+    Decoder.object
+      .field('fooBar', Decoder.string, snakeCase)
+const result = decoder.decode('{"foo_bar": "foo"}')
+```
 
 ## License
 
