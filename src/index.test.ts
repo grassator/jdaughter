@@ -89,9 +89,6 @@ describe("jdaughter", () => {
     });
     it("should work as a stand-alone function (and not method)", () => {
       const decode = D.array(D.number).decode;
-      const expected = {
-        buzz: "asdf"
-      };
       assert.deepStrictEqual(decode(JSON.stringify([1, 2, 3])), [1, 2, 3]);
     });
   });
