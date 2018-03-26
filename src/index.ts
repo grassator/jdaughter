@@ -18,11 +18,7 @@ function bindDecode<T>(d: { decode: (value: any) => T }): void {
 }
 
 export abstract class AbstractDecoder<Value> {
-  get Type(): Value {
-    throw new TypeError(
-      "`Type` should never be used at runtime and only in `typeof` expression"
-    );
-  }
+  Type: Value;
 
   protected constructor() {
     throw new TypeError("`Decoder` should never be constructed directly");

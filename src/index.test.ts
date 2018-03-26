@@ -2,13 +2,6 @@ import * as assert from "assert";
 import { Decoder as D } from "./index";
 
 describe("jdaughter", () => {
-  describe("Type", () => {
-    it("should throw when accessed", () => {
-      assert.throws(() => {
-        return D.null.Type;
-      });
-    });
-  });
   describe("null", () => {
     it("should correctly parse", () => {
       assert.strictEqual(D.null.decode(JSON.stringify(null)), null);
