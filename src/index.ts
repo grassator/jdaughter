@@ -93,7 +93,7 @@ export class Decoder<Value> extends AbstractDecoder<Value> {
   public static null: Decoder<null> = Object.assign(
     Object.create(Decoder.prototype),
     {
-      decodeParsed(value: any): Date {
+      decodeParsed(value: any): null {
         if (value !== null) {
           throw new TypeError(`Expected value to be null, got ${typeof value}`);
         }
