@@ -70,7 +70,7 @@ import * as Decoder from "jdaughter";
 To be able to decode and ensure the basic JSON types, there are pre-defined decoders available inside the library:
 
 ```js
-import { null_, boolean, number, string } from "jdaughter";
+import { undefined_, null_, boolean, number, string } from "jdaughter";
 ```
 
 ### `Date` Decoder
@@ -96,8 +96,8 @@ Or it can be complex type, including a nested arrays
 
 ```js
 import { array, number, decode } from "jdaughter";
-const arrayOfArraysOfNumbersDecoder = array(array(number))
-const result = arrayOfArraysOfNumbersDecoder.decode([[1], [2], [3]])
+const arrayOfArraysOfNumbersDecoder = array(array(number));
+const result = arrayOfArraysOfNumbersDecoder.decode([[1], [2], [3]]);
 ```
 
 ### Object Decoder
@@ -113,24 +113,24 @@ const decoder =
         nested_bar: string
       }),
       arr: array(string)
-    })
+    });
 const result = decode(decoder, {
   foo: 'foo',
   bar: {
     'nested_bar': 'bar'
   },
   arr: [1, 2, 3]
-})
+});
 ```
 
 It is also possible to specify a mapping function from the field name you want in the decoded object to the one in the raw JSON. For example it is quite common for a JSON apis to have snake_case fields, while it is preferred to have camelCase in JavaScript:
 
 ```js
 import { object, string, decode } from "jdaughter";
-import { snakeCase } from 'lodash'
+import { snakeCase } from 'lodash';
 
-const decoder = object({ fooBar: string }, snakeCase)
-const result = decode(decoder, {"foo_bar": "foo"})
+const decoder = object({ fooBar: string }, snakeCase);
+const result = decode(decoder, {"foo_bar": "foo"});
 ```
 
 ### Dictionary Decoder
@@ -139,11 +139,11 @@ Some APIs use JSON objects as dictionaries either from strings to some values, f
 
 ```js
 import { dictionary, string, boolean, decode } from "jdaughter";
-const decoder = dictionary(string, boolean)
+const decoder = dictionary(string, boolean);
 const result = decode(decoder, {
   foo: false,
   bar: true
-})
+});
 ```
 
 > When used in TypeScript this will produce correct indexed type `{[key: string]: boolean}`
@@ -154,8 +154,8 @@ If a field can contain values of varying types, it can be represented with `eith
 
 ```js
 import { either, object, string, null_, decode } from "jdaughter";
-const objectOrNull = either(object({ foo: string }), null_)
-const result = decode(objectOrNull, null)
+const objectOrNull = either(object({ foo: string }), null_);
+const result = decode(objectOrNull, null);
 ```
 
 Since decoders are arbitrarily composable, you can also compose `either` with itself to describe fields that can have more than 2 possible types:
@@ -172,15 +172,8 @@ const stringNumberOrBoolean = either(string, either(number, boolean));
 
 ```js
 import { either, string, always, decode } from "jdaughter";
-const "" = either(string, always(""))
-const result = decode(objectOrNull, null) 
-```
-// ""
-Since decoders are arbitrarily composable, you can also compose `either` with itself to describe fields that can have more than 2 possible types:
-
-```js
-import { either, string, number, boolean } from "jdaughter";
-const stringNumberOrBoolean = either(string, either(number, boolean));
+const stringWithDefault = either(string, always(""));
+const result = decode(stringWithDefault, null); // ""
 ```
 
 ## License
