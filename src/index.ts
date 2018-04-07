@@ -1,8 +1,7 @@
-export type DecodeErrorStrategy = (message: string, value: any) => any;
-
-export const throwOnError = (message: string) => {
-  throw new TypeError(message);
-};
+export interface DecodeErrorStrategy<T> {
+  report(expected: string, actual: any, path: string): T;
+  is(value: any): value is T;
+}
 
 export const formatErrorMessage = (
   expectedTypeName: string,
@@ -18,18 +17,25 @@ export const formatErrorMessage = (
   return `Expected value at path \`${adjustedPath}\` to be ${expectedTypeName}, got ${actualType}`;
 };
 
-export type Decoder<Value> = (
+export const throwOnError: DecodeErrorStrategy<never> = {
+  report: (expected: string, actual: any, path: string) => {
+    throw new TypeError(formatErrorMessage(expected, actual, path));
+  },
+  is: (value): value is never => false
+};
+
+export type Decoder<TValue> = <TError>(
   value: any,
-  errorStrategy: DecodeErrorStrategy,
+  errorStrategy: DecodeErrorStrategy<TError>,
   path: string
-) => Value;
+) => TValue | TError;
 
 function decodePrimitive<Value>(
   type: "boolean" | "number" | "string" | "undefined"
 ): Decoder<Value> {
   return (value, errorStrategy, path) => {
     if (typeof value !== type) {
-      return errorStrategy(formatErrorMessage(type, value, path), value);
+      return errorStrategy.report(type, value, path);
     }
     return value;
   };
@@ -44,17 +50,14 @@ const ISO_8601_REGEX = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(([+-]\d\d:\d\d)|
 
 export const date: Decoder<Date> = (value, errorStrategy, path) => {
   if (typeof value !== "string" || !ISO_8601_REGEX.test(value)) {
-    return errorStrategy(
-      formatErrorMessage("ISO 8601 string", value, path),
-      value
-    );
+    return errorStrategy.report("ISO 8601 string", value, path);
   }
   return new Date(value);
 };
 
 export const null_: Decoder<null> = (value, errorStrategy, path) => {
   if (value !== null) {
-    return errorStrategy(formatErrorMessage("null", value, path), value);
+    return errorStrategy.report("null", value, path);
   }
   return null;
 };
@@ -80,17 +83,26 @@ export const object = <T extends { [Key in keyof T]: Decoder<any> }>(
 
   return (value, errorStrategy, path) => {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return errorStrategy(formatErrorMessage("object", value, path), value);
+      return errorStrategy.report("object", value, path);
     }
 
+    let hasErrors = false;
     const result: any = {};
     for (let key in cleanDefinition) {
       const mappedName = mapName(key);
-      result[key] = cleanDefinition[key](
+      const decoded = cleanDefinition[key](
         value[mappedName],
         errorStrategy,
         path + "." + mappedName
       );
+      if (errorStrategy.is(decoded)) {
+        hasErrors = true;
+        continue;
+      }
+      result[key] = decoded;
+    }
+    if (hasErrors) {
+      return errorStrategy.report("array", value, path);
     }
     return result;
   };
@@ -99,11 +111,22 @@ export const object = <T extends { [Key in keyof T]: Decoder<any> }>(
 export const array = <T>(of: Decoder<T>): Decoder<T[]> => {
   return (value, errorStrategy, path) => {
     if (!Array.isArray(value)) {
-      return errorStrategy(formatErrorMessage("array", value, path), value);
+      return errorStrategy.report("array", value, path);
     }
-    return value.map((item, index) =>
-      of(item, errorStrategy, path + "." + index)
-    );
+    let hasErrors = false;
+    const result = [];
+    for (let i = 0; i < value.length; ++i) {
+      const decoded = of(value[i], errorStrategy, path + "." + i);
+      if (errorStrategy.is(decoded)) {
+        hasErrors = true;
+        continue;
+      }
+      result.push(decoded);
+    }
+    if (hasErrors) {
+      return errorStrategy.report("array", value, path);
+    }
+    return result;
   };
 };
 
@@ -113,41 +136,64 @@ export const dictionary = <T>(
 ): Decoder<{ [key: string]: T }> => {
   return (value, errorStrategy, path) => {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return errorStrategy(formatErrorMessage("object", value, path), value);
+      return errorStrategy.report("object", value, path);
     }
     const result: { [key: string]: T } = {};
+    let hasErrors = false;
     for (const key in value) {
       if (hasOwnProperty.call(value, key)) {
-        const decodedKey =
-          from === string ? key : from(key, errorStrategy, path);
-        result[decodedKey] = to(value[key], errorStrategy, path + "." + key);
+        const decodedKey = from(key, errorStrategy, path);
+        if (errorStrategy.is(decodedKey)) {
+          hasErrors = true;
+          continue;
+        }
+        const decoded = to(value[key], errorStrategy, path + "." + key);
+        if (errorStrategy.is(decoded)) {
+          hasErrors = true;
+          continue;
+        }
+        result[decodedKey] = decoded;
       }
+    }
+    if (hasErrors) {
+      return errorStrategy.report("dictionary", value, path);
     }
     return result;
   };
 };
 
-const intermediaryError = {
-  message: ""
+type IntermediaryError = {
+  expected: string;
 };
 
-const intermediaryErrorStrategy: DecodeErrorStrategy = (message: string) => {
-  intermediaryError.message = message;
-  return intermediaryError;
+const intermediaryError = {
+  expected: ""
+};
+
+const intermediaryErrorStrategy: DecodeErrorStrategy<IntermediaryError> = {
+  report(expected) {
+    intermediaryError.expected = expected;
+    return intermediaryError;
+  },
+  is: (value): value is IntermediaryError => value === intermediaryError
 };
 
 export const either = <T, U>(a: Decoder<T>, b: Decoder<U>): Decoder<T | U> => {
   return (value, errorStrategy, path) => {
-    const aResult: any = a(value, intermediaryErrorStrategy, path);
-    if (aResult !== intermediaryError) {
+    const aResult = a(value, intermediaryErrorStrategy, path);
+    if (!intermediaryErrorStrategy.is(aResult)) {
       return aResult;
     }
-    const message = aResult.message;
-    const bResult: any = b(value, intermediaryErrorStrategy, path);
-    if (bResult !== intermediaryError) {
+    const aExpected = aResult.expected;
+    const bResult = b(value, intermediaryErrorStrategy, path);
+    if (!intermediaryErrorStrategy.is(bResult)) {
       return bResult;
     }
-    return errorStrategy(`Either: ${message} or ${bResult.message}`, value);
+    return errorStrategy.report(
+      `${aExpected} or ${bResult.expected}`,
+      value,
+      path
+    );
   };
 };
 

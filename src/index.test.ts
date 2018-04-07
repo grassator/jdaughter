@@ -202,6 +202,16 @@ describe("jdaughter", () => {
         false
       );
     });
+    it("should have readable error messages", () => {
+      try {
+        D.decode(D.either(D.string, D.number), null);
+      } catch (e) {
+        assert.strictEqual(
+          e.message,
+          "Expected value at path `.` to be string or number, got null"
+        );
+      }
+    });
   });
   describe("always", () => {
     it("should succeed with a given value", () => {
