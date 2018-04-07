@@ -1,3 +1,5 @@
+import { Decoder } from "../dist";
+
 export type DecodeErrorStrategy = (message: string, value: any) => any;
 
 export const throwOnError = (message: string) => {
@@ -114,3 +116,6 @@ export const dictonary = <T>(
     return result;
   };
 };
+
+export const decode = <T>(decoder: Decoder<T>, value: any) =>
+  decoder(value, throwOnError);
