@@ -172,6 +172,27 @@ describe("jdaughter", () => {
       }
     });
   });
+  describe("either", () => {
+    it("should not throw if the first option fails", () => {
+      const numberOrString = D.either(D.number, D.string);
+      assert.strictEqual(D.decode(numberOrString, "foo"), "foo");
+    });
+    it("should not throw if the second option fails", () => {
+      const numberOrString = D.either(D.number, D.string);
+      assert.strictEqual(D.decode(numberOrString, 42), 42);
+    });
+    it("should throw if both options fail", () => {
+      assert.throws(() => {
+        D.decode(D.either(D.number, D.string), false);
+      }, TypeError);
+    });
+    it("should support nesting", () => {
+      assert.strictEqual(
+        D.decode(D.either(D.number, D.either(D.string, D.boolean)), false),
+        false
+      );
+    });
+  });
   describe("formatErrorMessage", () => {
     it("should distinguish objects and null", () => {
       assert.strictEqual(

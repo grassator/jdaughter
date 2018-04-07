@@ -148,6 +148,23 @@ const result = decode(decoder, {
 
 > When used in TypeScript this will produce correct indexed type `{[key: string]: boolean}`
 
+### Either Decoder
+
+If a field can contain values of varying types, it can be represented with `either` decoder. A common case where an object is nullable:
+
+```js
+import { either, object, string, null_, decode } from "jdaughter";
+const objectOrNull = either(object({ foo: string }), null_)
+const result = decode(objectOrNull, null)
+```
+
+Since decoders are arbitrarily composable, you can also compose `either` with itself to describe fields that can have more than 2 possible types:
+
+```js
+import { either, string, number, boolean } from "jdaughter";
+const stringNumberOrBoolean = either(string, either(number, boolean));
+```
+
 ## License
 
 The MIT License (MIT)

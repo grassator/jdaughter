@@ -126,5 +126,29 @@ export const dictionary = <T>(
   };
 };
 
+const intermediaryError = {
+  message: ""
+};
+
+const intermediaryErrorStrategy: DecodeErrorStrategy = (message: string) => {
+  intermediaryError.message = message;
+  return intermediaryError;
+};
+
+export const either = <T, U>(a: Decoder<T>, b: Decoder<U>): Decoder<T | U> => {
+  return (value, errorStrategy, path) => {
+    const aResult: any = a(value, intermediaryErrorStrategy, path);
+    if (aResult !== intermediaryError) {
+      return aResult;
+    }
+    const message = aResult.message;
+    const bResult: any = b(value, intermediaryErrorStrategy, path);
+    if (bResult !== intermediaryError) {
+      return bResult;
+    }
+    return errorStrategy(`Either: ${message} or ${bResult.message}`, value);
+  };
+};
+
 export const decode = <T>(decoder: Decoder<T>, value: any) =>
   decoder(value, throwOnError, "");
