@@ -44,12 +44,22 @@ describe("jdaughter", () => {
     });
   });
   describe("null", () => {
-    it("should correctly parse", () => {
+    it("should correctly decode", () => {
       assert.strictEqual(D.decode(D.null_, null), null);
     });
-    it("should throw when it does not parse", () => {
+    it("should throw when it does not decode", () => {
       assert.throws(() => {
         D.decode(D.null_, {});
+      }, TypeError);
+    });
+  });
+  describe("undefined", () => {
+    it("should correctly decode", () => {
+      assert.strictEqual(D.decode(D.undefined_, undefined), undefined);
+    });
+    it("should throw when it does not decode", () => {
+      assert.throws(() => {
+        D.decode(D.undefined_, null);
       }, TypeError);
     });
   });

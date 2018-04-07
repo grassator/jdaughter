@@ -25,7 +25,7 @@ export type Decoder<Value> = (
 ) => Value;
 
 function decodePrimitive<Value>(
-  type: "boolean" | "number" | "string"
+  type: "boolean" | "number" | "string" | "undefined"
 ): Decoder<Value> {
   return (value, errorStrategy, path) => {
     if (typeof value !== type) {
@@ -38,6 +38,7 @@ function decodePrimitive<Value>(
 export const boolean: Decoder<boolean> = decodePrimitive("boolean");
 export const number: Decoder<number> = decodePrimitive("number");
 export const string: Decoder<string> = decodePrimitive("string");
+export const undefined_: Decoder<undefined> = decodePrimitive("undefined");
 
 const ISO_8601_REGEX = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(([+-]\d\d:\d\d)|Z)?$/i;
 
