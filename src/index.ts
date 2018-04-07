@@ -106,7 +106,7 @@ export const array = <T>(of: Decoder<T>): Decoder<T[]> => {
   };
 };
 
-export const dictonary = <T>(
+export const dictionary = <T>(
   from: Decoder<string>,
   to: Decoder<T>
 ): Decoder<{ [key: string]: T }> => {

@@ -152,18 +152,18 @@ describe("jdaughter", () => {
         foo: 10
       };
       assert.deepStrictEqual(
-        D.decode(D.dictonary(D.string, D.number), value),
+        D.decode(D.dictionary(D.string, D.number), value),
         value
       );
     });
     it("should throw if a value of a field fails to decode", () => {
       assert.throws(() => {
-        D.decode(D.dictonary(D.string, D.number), { foo: "bar" });
+        D.decode(D.dictionary(D.string, D.number), { foo: "bar" });
       }, TypeError);
     });
     it("should correctly modify path for reported errors", () => {
       try {
-        D.decode(D.dictonary(D.string, D.number), { foo: "bar" });
+        D.decode(D.dictionary(D.string, D.number), { foo: "bar" });
       } catch (e) {
         assert.strictEqual(
           e.message,
