@@ -238,4 +238,33 @@ describe("jdaughter", () => {
       );
     });
   });
+  describe("GatherErrorsStrategy", () => {
+    const decoder = D.object({
+      array: D.array(D.number),
+      dictionary: D.dictionary(D.string, D.number),
+      numberOrString: D.either(D.number, D.string)
+    });
+    it("should gather all nested errors", () => {
+      const strategy = new D.GatherErrorsStrategy();
+      const result = decoder(
+        {
+          array: [42, "foo"],
+          dictionary: {
+            foo: "bar"
+          },
+          numberOrString: false
+        },
+        strategy,
+        ""
+      );
+      assert(strategy.is(result));
+      if (strategy.is(result)) {
+        assert.deepStrictEqual(strategy.messages, [
+          "Expected value at path `.array.1` to be number, got string",
+          "Expected value at path `.dictionary.foo` to be number, got string",
+          "Expected value at path `.numberOrString` to be number or string, got boolean"
+        ]);
+      }
+    });
+  });
 });

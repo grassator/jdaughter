@@ -24,6 +24,21 @@ export const throwOnError: DecodeErrorStrategy<never> = {
   is: (value): value is never => false
 };
 
+export class GatherErrorsStrategy
+  implements DecodeErrorStrategy<GatherErrorsStrategy> {
+  public messages: string[];
+  constructor() {
+    this.messages = [];
+  }
+  report(expected: string, actual: any, path: string): this {
+    this.messages.push(formatErrorMessage(expected, actual, path));
+    return this;
+  }
+  is(value: any): value is this {
+    return value === this;
+  }
+}
+
 export type Decoder<TValue> = <TError>(
   value: any,
   errorStrategy: DecodeErrorStrategy<TError>,
@@ -86,7 +101,7 @@ export const object = <T extends { [Key in keyof T]: Decoder<any> }>(
       return errorStrategy.report("object", value, path);
     }
 
-    let hasErrors = false;
+    let lastError = undefined;
     const result: any = {};
     for (let key in cleanDefinition) {
       const mappedName = mapName(key);
@@ -96,35 +111,39 @@ export const object = <T extends { [Key in keyof T]: Decoder<any> }>(
         path + "." + mappedName
       );
       if (errorStrategy.is(decoded)) {
-        hasErrors = true;
+        lastError = decoded;
         continue;
       }
       result[key] = decoded;
     }
-    if (hasErrors) {
-      return errorStrategy.report("array", value, path);
+    if (lastError) {
+      return lastError;
     }
     return result;
   };
 };
 
 export const array = <T>(of: Decoder<T>): Decoder<T[]> => {
-  return (value, errorStrategy, path) => {
+  return <TError>(
+    value: any,
+    errorStrategy: DecodeErrorStrategy<TError>,
+    path: string
+  ) => {
     if (!Array.isArray(value)) {
       return errorStrategy.report("array", value, path);
     }
-    let hasErrors = false;
+    let lastError: TError | undefined = undefined;
     const result = [];
     for (let i = 0; i < value.length; ++i) {
       const decoded = of(value[i], errorStrategy, path + "." + i);
       if (errorStrategy.is(decoded)) {
-        hasErrors = true;
+        lastError = decoded;
         continue;
       }
       result.push(decoded);
     }
-    if (hasErrors) {
-      return errorStrategy.report("array", value, path);
+    if (lastError) {
+      return lastError;
     }
     return result;
   };
@@ -134,29 +153,33 @@ export const dictionary = <T>(
   from: Decoder<string>,
   to: Decoder<T>
 ): Decoder<{ [key: string]: T }> => {
-  return (value, errorStrategy, path) => {
+  return <TError>(
+    value: any,
+    errorStrategy: DecodeErrorStrategy<TError>,
+    path: string
+  ) => {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
       return errorStrategy.report("object", value, path);
     }
     const result: { [key: string]: T } = {};
-    let hasErrors = false;
+    let lastError: TError | undefined = undefined;
     for (const key in value) {
       if (hasOwnProperty.call(value, key)) {
         const decodedKey = from(key, errorStrategy, path);
         if (errorStrategy.is(decodedKey)) {
-          hasErrors = true;
+          lastError = decodedKey;
           continue;
         }
         const decoded = to(value[key], errorStrategy, path + "." + key);
         if (errorStrategy.is(decoded)) {
-          hasErrors = true;
+          lastError = decoded;
           continue;
         }
         result[decodedKey] = decoded;
       }
     }
-    if (hasErrors) {
-      return errorStrategy.report("dictionary", value, path);
+    if (lastError) {
+      return lastError;
     }
     return result;
   };
