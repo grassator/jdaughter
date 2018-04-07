@@ -67,6 +67,16 @@ describe("jdaughter", () => {
         D.decode(D.array(D.number), ["foo", "bar"]);
       }, TypeError);
     });
+    it("should correctly modify path for reported errors", () => {
+      try {
+        D.decode(D.array(D.string), ["foo", 42]);
+      } catch (e) {
+        assert.strictEqual(
+          e.message,
+          "Expected value at path `.1` to be string, got number"
+        );
+      }
+    });
   });
   describe("object", () => {
     it("should support empty object parsing", () => {
@@ -122,6 +132,18 @@ describe("jdaughter", () => {
         { buzz: "asdf" }
       );
     });
+    it("should correctly modify path for reported errors", () => {
+      try {
+        D.decode(D.object({ buzz: D.string }, name => `prefix_${name}`), {
+          prefix_buzz: null
+        });
+      } catch (e) {
+        assert.strictEqual(
+          e.message,
+          "Expected value at path `.prefix_buzz` to be string, got null"
+        );
+      }
+    });
   });
   describe("dict", () => {
     it("should support objects as maps from strings to values", () => {
@@ -138,6 +160,36 @@ describe("jdaughter", () => {
       assert.throws(() => {
         D.decode(D.dictonary(D.string, D.number), { foo: "bar" });
       }, TypeError);
+    });
+    it("should correctly modify path for reported errors", () => {
+      try {
+        D.decode(D.dictonary(D.string, D.number), { foo: "bar" });
+      } catch (e) {
+        assert.strictEqual(
+          e.message,
+          "Expected value at path `.foo` to be number, got string"
+        );
+      }
+    });
+  });
+  describe("formatErrorMessage", () => {
+    it("should distinguish objects and null", () => {
+      assert.strictEqual(
+        D.formatErrorMessage("object", null, ""),
+        "Expected value at path `.` to be object, got null"
+      );
+    });
+    it("should distinguish objects and arrays", () => {
+      assert.strictEqual(
+        D.formatErrorMessage("object", [], ""),
+        "Expected value at path `.` to be object, got array"
+      );
+    });
+    it("should treat empty path as `.`", () => {
+      assert.strictEqual(
+        D.formatErrorMessage("object", "foobar", ""),
+        "Expected value at path `.` to be object, got string"
+      );
     });
   });
 });

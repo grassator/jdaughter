@@ -1,25 +1,35 @@
-import { Decoder } from "../dist";
-
 export type DecodeErrorStrategy = (message: string, value: any) => any;
 
 export const throwOnError = (message: string) => {
   throw new TypeError(message);
 };
 
+export const formatErrorMessage = (
+  expectedTypeName: string,
+  actual: any,
+  path: string
+) => {
+  const adjustedPath = path === "" ? "." : path;
+  const typeOf = typeof actual;
+  const actualType =
+    typeOf === "object"
+      ? actual === null ? "null" : Array.isArray(actual) ? "array" : typeOf
+      : typeOf;
+  return `Expected value at path \`${adjustedPath}\` to be ${expectedTypeName}, got ${actualType}`;
+};
+
 export type Decoder<Value> = (
   value: any,
-  errorStrategy: DecodeErrorStrategy
+  errorStrategy: DecodeErrorStrategy,
+  path: string
 ) => Value;
 
 function decodePrimitive<Value>(
   type: "boolean" | "number" | "string"
 ): Decoder<Value> {
-  return (value, errorStrategy) => {
+  return (value, errorStrategy, path) => {
     if (typeof value !== type) {
-      return errorStrategy(
-        `Expected value to be an ${type}, got a ${typeof value}`,
-        value
-      );
+      return errorStrategy(formatErrorMessage(type, value, path), value);
     }
     return value;
   };
@@ -31,19 +41,19 @@ export const string: Decoder<string> = decodePrimitive("string");
 
 const ISO_8601_REGEX = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(([+-]\d\d:\d\d)|Z)?$/i;
 
-export const date: Decoder<Date> = (value, errorStrategy) => {
+export const date: Decoder<Date> = (value, errorStrategy, path) => {
   if (typeof value !== "string" || !ISO_8601_REGEX.test(value)) {
     return errorStrategy(
-      `Expected value to be an ISO 8601 string, got: ${value}`,
+      formatErrorMessage("ISO 8601 string", value, path),
       value
     );
   }
   return new Date(value);
 };
 
-export const null_: Decoder<null> = (value, errorStrategy) => {
+export const null_: Decoder<null> = (value, errorStrategy, path) => {
   if (value !== null) {
-    return errorStrategy(`Expected value to be null, got: ${value}`, value);
+    return errorStrategy(formatErrorMessage("null", value, path), value);
   }
   return null;
 };
@@ -67,31 +77,32 @@ export const object = <T extends { [Key in keyof T]: Decoder<any> }>(
     }
   }
 
-  return (value, errorStrategy) => {
+  return (value, errorStrategy, path) => {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return errorStrategy(
-        `Expected value to be an object, got: ${value}`,
-        value
-      );
+      return errorStrategy(formatErrorMessage("object", value, path), value);
     }
 
     const result: any = {};
     for (let key in cleanDefinition) {
-      result[key] = cleanDefinition[key](value[mapName(key)], errorStrategy);
+      const mappedName = mapName(key);
+      result[key] = cleanDefinition[key](
+        value[mappedName],
+        errorStrategy,
+        path + "." + mappedName
+      );
     }
     return result;
   };
 };
 
 export const array = <T>(of: Decoder<T>): Decoder<T[]> => {
-  return (value, errorStrategy) => {
+  return (value, errorStrategy, path) => {
     if (!Array.isArray(value)) {
-      return errorStrategy(
-        `Expected value to be an array, got ${typeof value}`,
-        value
-      );
+      return errorStrategy(formatErrorMessage("array", value, path), value);
     }
-    return value.map(item => of(item, errorStrategy));
+    return value.map((item, index) =>
+      of(item, errorStrategy, path + "." + index)
+    );
   };
 };
 
@@ -99,18 +110,16 @@ export const dictonary = <T>(
   from: Decoder<string>,
   to: Decoder<T>
 ): Decoder<{ [key: string]: T }> => {
-  return (value, errorStrategy) => {
+  return (value, errorStrategy, path) => {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return errorStrategy(
-        `Expected value to be an object, got: ${value}`,
-        value
-      );
+      return errorStrategy(formatErrorMessage("object", value, path), value);
     }
     const result: { [key: string]: T } = {};
     for (const key in value) {
       if (hasOwnProperty.call(value, key)) {
-        const decodedKey = from === string ? key : from(key, errorStrategy);
-        result[decodedKey] = to(value[key], errorStrategy);
+        const decodedKey =
+          from === string ? key : from(key, errorStrategy, path);
+        result[decodedKey] = to(value[key], errorStrategy, path + "." + key);
       }
     }
     return result;
@@ -118,4 +127,4 @@ export const dictonary = <T>(
 };
 
 export const decode = <T>(decoder: Decoder<T>, value: any) =>
-  decoder(value, throwOnError);
+  decoder(value, throwOnError, "");
