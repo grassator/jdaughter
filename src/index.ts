@@ -150,5 +150,7 @@ export const either = <T, U>(a: Decoder<T>, b: Decoder<U>): Decoder<T | U> => {
   };
 };
 
+export const always = <T>(value: T): Decoder<T> => () => value;
+
 export const decode = <T>(decoder: Decoder<T>, value: any) =>
   decoder(value, throwOnError, "");

@@ -193,6 +193,11 @@ describe("jdaughter", () => {
       );
     });
   });
+  describe("always", () => {
+    it("should succeed with a given value", () => {
+      assert.strictEqual(D.decode(D.always(42), null), 42);
+    });
+  });
   describe("formatErrorMessage", () => {
     it("should distinguish objects and null", () => {
       assert.strictEqual(

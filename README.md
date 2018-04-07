@@ -165,6 +165,24 @@ import { either, string, number, boolean } from "jdaughter";
 const stringNumberOrBoolean = either(string, either(number, boolean));
 ```
 
+
+### Always Decoder
+
+`always` is a decoder that does not inspect actual value and instead always gives one it was initialized with. While not really useful by itself, it allows for having default values when used together with `either`:
+
+```js
+import { either, string, always, decode } from "jdaughter";
+const "" = either(string, always(""))
+const result = decode(objectOrNull, null) 
+```
+// ""
+Since decoders are arbitrarily composable, you can also compose `either` with itself to describe fields that can have more than 2 possible types:
+
+```js
+import { either, string, number, boolean } from "jdaughter";
+const stringNumberOrBoolean = either(string, either(number, boolean));
+```
+
 ## License
 
 The MIT License (MIT)
