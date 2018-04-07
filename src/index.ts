@@ -60,14 +60,14 @@ export const null_: Decoder<null> = (value, errorStrategy, path) => {
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 
-export type DecoderType<T> = T extends Decoder<infer U> ? U : never;
+export type DecodedType<T> = T extends Decoder<infer U> ? U : never;
 
 const id = <T>(x: T): T => x;
 
 export const object = <T extends { [Key in keyof T]: Decoder<any> }>(
   definition: T,
   mapName: (name: string) => string = id
-): Decoder<{ [Key in keyof T]: DecoderType<T[Key]> }> => {
+): Decoder<{ [Key in keyof T]: DecodedType<T[Key]> }> => {
   // Check for own properties here to avoid doing it in hot path.
   // This also makes sure we have an immutable snapshot of the definition.
   const cleanDefinition = Object.create(null);
