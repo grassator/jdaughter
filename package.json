@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "prepublishOnly": "npm test && npm run build",
-    "build": "tsc &&  babel ./dist/index.js -o ./dist/common.js -s",
+    "build": "tsc -m es2015 &&  babel ./dist/index.js -o ./dist/common.js -s",
     "lint": "tslint --project .",
     "test": "mocha -r ts-node/register src/**/*.test.ts"
   },
