@@ -1,12 +1,13 @@
 {
   "name": "jdaughter",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Typesafe JSON decoding for TypeScript",
-  "main": "dist/index.js",
+  "main": "dist/common.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "prepublishOnly": "npm test && npm run build",
-    "build": "tsc",
+    "build": "tsc &&  babel ./dist/index.js -o ./dist/common.js -s",
     "lint": "tslint --project .",
     "test": "mocha -r ts-node/register src/**/*.test.ts"
   },
@@ -22,6 +23,8 @@
   "devDependencies": {
     "@types/mocha": "^5.0.0",
     "@types/node": "^8.0.53",
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
     "mocha": "^5.0.5",
     "prettier": "^1.11.1",
     "ts-node": "^5.0.1",
