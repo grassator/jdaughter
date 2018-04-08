@@ -1,5 +1,8 @@
 # jdaughter
 
+[![Build Status](https://travis-ci.org/grassator/jdaughter.svg?branch=master)](https://travis-ci.org/grassator/jdaughter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 This project provides type-safe decoding (validation) of a JSON structure. Here's a quick sample using `fetch` API:
 
 ```typescript
@@ -31,7 +34,7 @@ Most of the recommendations on StackOverflow and other community sources simply 
 
 All of this things may result in security issues or incorrect behavior of your application that can be quite hard to discover as the data from the API may only be accessed deep inside the application.
 
-`jdaughter` fixes the issue by providing runtime type assertions through an easy-to-use API. It has zero dependencies and can be used in any ECMAScript 2015 compatible (or transpiled) environment or in TypeScript projects. 
+`jdaughter` fixes the issue by providing runtime type assertions through an easy-to-use API. It has zero dependencies and can be used in any ECMAScript 2015 compatible (or transpiled) environment or in TypeScript projects.
 
 ## TypeScript Support
 
