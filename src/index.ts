@@ -1,92 +1,64 @@
-export interface DecodeErrorStrategy<T> {
-  report(expected: string, actual: any, path: string): T;
-  is(value: any): value is T;
-}
+declare const VALUE_TYPE: unique symbol;
 
-export const formatErrorMessage = (
-  expectedTypeName: string,
-  actual: any,
-  path: string
-) => {
-  const adjustedPath = path === "" ? "." : path;
-  const typeOf = typeof actual;
-  const actualType =
-    typeOf === "object"
-      ? actual === null ? "null" : Array.isArray(actual) ? "array" : typeOf
-      : typeOf;
-  return `Expected value at path \`${adjustedPath}\` to be ${expectedTypeName}, got ${actualType}`;
+export type DescriptorType =
+  | {
+      kind: "primitive";
+      value: "boolean" | "number" | "string" | "undefined" | "null";
+    }
+  | {
+      kind: "either";
+      a: DescriptorType;
+      b: DescriptorType;
+    }
+  | {
+      kind: "array";
+      value: DescriptorType;
+    }
+  | {
+      kind: "object";
+      mapName: (name: string) => string;
+      properties: {
+        [property: string]: DescriptorType;
+      };
+    }
+  | {
+      kind: "dictionary";
+      value: DescriptorType;
+    }
+  | {
+      kind: "constant";
+      value: any;
+    };
+
+export type Descriptor<TValue> = DescriptorType & {
+  readonly [VALUE_TYPE]: TValue;
 };
-
-export const throwOnError: DecodeErrorStrategy<never> = {
-  report: (expected: string, actual: any, path: string) => {
-    throw new TypeError(formatErrorMessage(expected, actual, path));
-  },
-  is: (value): value is never => false
-};
-
-export class GatherErrorsStrategy
-  implements DecodeErrorStrategy<GatherErrorsStrategy> {
-  public messages: string[];
-  constructor() {
-    this.messages = [];
-  }
-  report(expected: string, actual: any, path: string): this {
-    this.messages.push(formatErrorMessage(expected, actual, path));
-    return this;
-  }
-  is(value: any): value is this {
-    return value === this;
-  }
-}
-
-export type Decoder<TValue> = <TError>(
-  value: any,
-  errorStrategy: DecodeErrorStrategy<TError>,
-  path: string
-) => TValue | TError;
 
 function decodePrimitive<Value>(
-  type: "boolean" | "number" | "string" | "undefined"
-): Decoder<Value> {
-  return (value, errorStrategy, path) => {
-    if (typeof value !== type) {
-      return errorStrategy.report(type, value, path);
-    }
-    return value;
-  };
+  value: "boolean" | "number" | "string" | "undefined" | "null"
+): Descriptor<Value> {
+  return {
+    kind: "primitive",
+    value
+  } as Descriptor<Value>;
 }
 
-export const boolean: Decoder<boolean> = decodePrimitive("boolean");
-export const number: Decoder<number> = decodePrimitive("number");
-export const string: Decoder<string> = decodePrimitive("string");
-export const undefined_: Decoder<undefined> = decodePrimitive("undefined");
-
-const ISO_8601_REGEX = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(([+-]\d\d:\d\d)|Z)?$/i;
-
-export const date: Decoder<Date> = (value, errorStrategy, path) => {
-  if (typeof value !== "string" || !ISO_8601_REGEX.test(value)) {
-    return errorStrategy.report("ISO 8601 string", value, path);
-  }
-  return new Date(value);
-};
-
-export const null_: Decoder<null> = (value, errorStrategy, path) => {
-  if (value !== null) {
-    return errorStrategy.report("null", value, path);
-  }
-  return null;
-};
+export const boolean = decodePrimitive<boolean>("boolean");
+export const number = decodePrimitive<number>("number");
+export const string = decodePrimitive<string>("string");
+export const undefined_ = decodePrimitive<undefined>("undefined");
+export const null_ = decodePrimitive<null>("null");
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 
-export type DecodedType<T> = T extends Decoder<infer U> ? U : never;
+export type DecodedType<T> = T extends Descriptor<infer U> ? U : never;
 
 const id = <T>(x: T): T => x;
 
-export const object = <T extends { [Key in keyof T]: Decoder<any> }>(
+export const object = <T extends { [Key in keyof T]: Descriptor<any> }>(
   definition: T,
   mapName: (name: string) => string = id
-): Decoder<{ [Key in keyof T]: DecodedType<T[Key]> }> => {
+): Descriptor<{ [Key in keyof T]: DecodedType<T[Key]> }> => {
   // Check for own properties here to avoid doing it in hot path.
   // This also makes sure we have an immutable snapshot of the definition.
   const cleanDefinition = Object.create(null);
@@ -95,132 +67,58 @@ export const object = <T extends { [Key in keyof T]: Decoder<any> }>(
       cleanDefinition[key] = definition[key];
     }
   }
-
-  return (value, errorStrategy, path) => {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return errorStrategy.report("object", value, path);
-    }
-
-    let lastError = undefined;
-    const result: any = {};
-    for (let key in cleanDefinition) {
-      const mappedName = mapName(key);
-      const decoded = cleanDefinition[key](
-        value[mappedName],
-        errorStrategy,
-        path + "." + mappedName
-      );
-      if (errorStrategy.is(decoded)) {
-        lastError = decoded;
-        continue;
-      }
-      result[key] = decoded;
-    }
-    if (lastError) {
-      return lastError;
-    }
-    return result;
-  };
+  return {
+    kind: "object",
+    properties: cleanDefinition,
+    mapName
+  } as Descriptor<{ [Key in keyof T]: DecodedType<T[Key]> }>;
 };
 
-export const array = <T>(of: Decoder<T>): Decoder<T[]> => {
-  return <TError>(
-    value: any,
-    errorStrategy: DecodeErrorStrategy<TError>,
-    path: string
-  ) => {
-    if (!Array.isArray(value)) {
-      return errorStrategy.report("array", value, path);
-    }
-    let lastError: TError | undefined = undefined;
-    const result = [];
-    for (let i = 0; i < value.length; ++i) {
-      const decoded = of(value[i], errorStrategy, path + "." + i);
-      if (errorStrategy.is(decoded)) {
-        lastError = decoded;
-        continue;
-      }
-      result.push(decoded);
-    }
-    if (lastError) {
-      return lastError;
-    }
-    return result;
-  };
-};
+export const array = <T>(of: Descriptor<T>): Descriptor<T[]> =>
+  (({
+    kind: "array",
+    value: of
+  } as any) as Descriptor<T[]>);
 
 export const dictionary = <T>(
-  from: Decoder<string>,
-  to: Decoder<T>
-): Decoder<{ [key: string]: T }> => {
-  return <TError>(
-    value: any,
-    errorStrategy: DecodeErrorStrategy<TError>,
-    path: string
-  ) => {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      return errorStrategy.report("object", value, path);
-    }
-    const result: { [key: string]: T } = {};
-    let lastError: TError | undefined = undefined;
-    for (const key in value) {
-      if (hasOwnProperty.call(value, key)) {
-        const decodedKey = from(key, errorStrategy, path);
-        if (errorStrategy.is(decodedKey)) {
-          lastError = decodedKey;
-          continue;
-        }
-        const decoded = to(value[key], errorStrategy, path + "." + key);
-        if (errorStrategy.is(decoded)) {
-          lastError = decoded;
-          continue;
-        }
-        result[decodedKey] = decoded;
-      }
-    }
-    if (lastError) {
-      return lastError;
-    }
-    return result;
-  };
+  from: Descriptor<string>,
+  to: Descriptor<T>
+): Descriptor<{ [key: string]: T }> =>
+  (({
+    kind: "dictionary",
+    value: to
+  } as any) as Descriptor<{ [key: string]: T }>);
+
+export const either = <T, U>(
+  a: Descriptor<T>,
+  b: Descriptor<U>
+): Descriptor<T | U> =>
+  (({
+    kind: "either",
+    a,
+    b
+  } as any) as Descriptor<T | U>);
+
+export const always = <T>(value: T): Descriptor<T> =>
+  ({
+    kind: "constant",
+    value
+  } as Descriptor<T>);
+
+export type BufferDecoder<T> = <T>(buffer: Buffer | Uint8Array) => T;
+
+export const compileBufferDecoder = <T>(
+  descriptor: Descriptor<T>
+): BufferDecoder<T> => {
+  let source = "return null";
+  return new Function("buf", source) as any;
 };
 
-type IntermediaryError = {
-  expected: string;
+export const decodeBuffer = <T>(
+  descriptor: Descriptor<T>,
+  value: Buffer | Uint8Array
+) => {
+  const decoder = compileBufferDecoder(descriptor);
+  console.log(decoder);
+  return decoder(value);
 };
-
-const intermediaryError = {
-  expected: ""
-};
-
-const intermediaryErrorStrategy: DecodeErrorStrategy<IntermediaryError> = {
-  report(expected) {
-    intermediaryError.expected = expected;
-    return intermediaryError;
-  },
-  is: (value): value is IntermediaryError => value === intermediaryError
-};
-
-export const either = <T, U>(a: Decoder<T>, b: Decoder<U>): Decoder<T | U> => {
-  return (value, errorStrategy, path) => {
-    const aResult = a(value, intermediaryErrorStrategy, path);
-    if (!intermediaryErrorStrategy.is(aResult)) {
-      return aResult;
-    }
-    const aExpected = aResult.expected;
-    const bResult = b(value, intermediaryErrorStrategy, path);
-    if (!intermediaryErrorStrategy.is(bResult)) {
-      return bResult;
-    }
-    return errorStrategy.report(
-      `${aExpected} or ${bResult.expected}`,
-      value,
-      path
-    );
-  };
-};
-
-export const always = <T>(value: T): Decoder<T> => () => value;
-
-export const decode = <T>(decoder: Decoder<T>, value: any) =>
-  decoder(value, throwOnError, "");
