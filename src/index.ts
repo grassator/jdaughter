@@ -2,6 +2,18 @@ const DOUBLE_QUOTE = 0x22;
 const OPEN_CURLY_BRACE = 0x7b;
 const CLOSE_CURLY_BRACE = 0x7d;
 const COLON = 0x3a;
+const MINUS = 0x2d;
+
+const NUMBER_0 = 0x30;
+const NUMBER_1 = 0x31;
+const NUMBER_2 = 0x32;
+const NUMBER_3 = 0x33;
+const NUMBER_4 = 0x34;
+const NUMBER_5 = 0x35;
+const NUMBER_6 = 0x36;
+const NUMBER_7 = 0x37;
+const NUMBER_8 = 0x38;
+const NUMBER_9 = 0x39;
 
 const LETTER_UPPERCASE_A = 0x41;
 const LETTER_UPPERCASE_B = 0x42;
@@ -224,9 +236,37 @@ function parseNull(buffer: Buffer, index: number): number {
   }
 }
 
-function parseNumber(buffer: Buffer, index: number): number {
-  // FIXME implement number parsing
-  return -1;
+function parseNumber(
+  buffer: Buffer,
+  index: number,
+  result: NumberResult
+): number {
+  if (index < buffer.length) {
+    let multiplier = 1;
+    let base = 0;
+    if (buffer[index] === MINUS) {
+      ++index;
+      multiplier = -1;
+    }
+    if (index < buffer.length) {
+      if (buffer[index] === NUMBER_0) {
+        base = 0;
+        ++index;
+      } else if (buffer[index] >= NUMBER_1 && buffer[index] <= NUMBER_9) {
+        base = buffer[index] - NUMBER_0;
+        for (++index; index < buffer.length; ++index) {
+          if (buffer[index] >= NUMBER_0 && buffer[index] <= NUMBER_9) {
+            base = base * 10 + (buffer[index] - NUMBER_0);
+          } else {
+            break;
+          }
+        }
+      }
+      result._ = base * multiplier;
+      return index;
+    }
+  }
+  return parseError("Expected number", index);
 }
 
 export const compileBufferDecoder = <T>(
@@ -237,16 +277,24 @@ export const compileBufferDecoder = <T>(
     if (descriptor.value === "boolean") {
       main = `
         if ((i = parseBoolean(b, i, booleanResult)) === -1) return false;
-        return booleanResult._;
+        return [i, booleanResult._];
       `;
     } else if (descriptor.value === "null") {
       main = `
         i = parseNull(b, i);
-        return null
+        return [i, null]
+      `;
+    } else if (descriptor.value === "number") {
+      main = `
+        if ((i = parseNumber(b, i, numberResult)) === -1) return 0;
+        return [i, numberResult._];
       `;
     }
   }
-  const body = `return function decode (b) { var i = 0; ${main} }`;
+  const body = `return function decode (b) {
+    var i = 0;
+    ${main};
+  }`;
   const wrapper = new Function(
     "parseBoolean",
     "booleanResult",
@@ -266,12 +314,16 @@ export const compileBufferDecoder = <T>(
 
 export const decodeBuffer = <T>(
   descriptor: Descriptor<T>,
-  value: Buffer | Uint8Array
+  buffer: Buffer | Uint8Array
 ) => {
   const decoder = compileBufferDecoder(descriptor);
   lastErrorIndex = -1;
   lastErrorMessage = "";
-  const result = decoder(value);
+  const [index, result] = decoder(buffer);
+
+  if (index !== buffer.length) {
+    throw new TypeError(`Expected EOF at ${lastErrorIndex}`);
+  }
 
   if (lastErrorIndex !== -1) {
     throw new TypeError(`${lastErrorMessage} at ${lastErrorIndex}`);

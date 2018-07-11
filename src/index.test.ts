@@ -23,8 +23,21 @@ describe("jdaughter", () => {
     });
   });
   describe("number", () => {
-    it("should correctly parse", () => {
+    it("should correctly parse zero", () => {
+      assert.strictEqual(decodeBuffer(D.number, 0), 0);
+    });
+    it("should correctly parse an integer", () => {
       assert.strictEqual(decodeBuffer(D.number, 42), 42);
+    });
+    it("should correctly parse a float", () => {
+      assert.strictEqual(decodeBuffer(D.number, 123.123), 123.123);
+    });
+    it("should correctly parse a float with an exponent", () => {
+      const actual = D.decodeBuffer(
+        D.number,
+        Buffer.from("2.5e11", "utf8")
+      ) as any;
+      assert.strictEqual(actual, 2.5e11);
     });
     it("should throw when it does not parse", () => {
       assert.throws(() => {
