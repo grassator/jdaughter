@@ -3,19 +3,22 @@ import * as D from "./index";
 
 function decodeBuffer<T>(descriptor: D.Descriptor<T>, value: any): T {
   return D.decodeBuffer(
-    D.string,
+    descriptor,
     Buffer.from(JSON.stringify(value), "utf8")
   ) as any;
 }
 
 describe("jdaughter", () => {
   describe("boolean", () => {
-    it("should correctly parse", () => {
+    it("should correctly parse `true`", () => {
       assert.strictEqual(decodeBuffer(D.boolean, true), true);
+    });
+    it("should correctly parse `false`", () => {
+      assert.strictEqual(decodeBuffer(D.boolean, false), false);
     });
     it("should throw when it does not parse", () => {
       assert.throws(() => {
-        decodeBuffer(D.string, true);
+        decodeBuffer(D.boolean, null);
       }, TypeError);
     });
   });
@@ -46,16 +49,6 @@ describe("jdaughter", () => {
     it("should throw when it does not decodeBuffer", () => {
       assert.throws(() => {
         decodeBuffer(D.null_, {});
-      }, TypeError);
-    });
-  });
-  describe("undefined", () => {
-    it("should correctly decodeBuffer", () => {
-      assert.strictEqual(decodeBuffer(D.undefined_, undefined), undefined);
-    });
-    it("should throw when it does not decodeBuffer", () => {
-      assert.throws(() => {
-        decodeBuffer(D.undefined_, null);
       }, TypeError);
     });
   });
