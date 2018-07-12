@@ -1,7 +1,10 @@
 const DOUBLE_QUOTE = 0x22;
 const OPEN_CURLY_BRACE = 0x7b;
 const CLOSE_CURLY_BRACE = 0x7d;
+const OPEN_SQUARE_BRACE = 0x5b;
+const CLOSE_SQUARE_BRACE = 0x5d;
 const COLON = 0x3a;
+const COMMA = 0x2c;
 const MINUS = 0x2d;
 const PLUS = 0x2b;
 const DOT = 0x2e;
@@ -258,7 +261,7 @@ export function parseNumber(
     chars.push(buffer[index++]);
   }
   if (chars.length !== 0) {
-    const parsed = parseFloat(String.fromCharCode(...chars));
+    const parsed = parseFloat(String.fromCharCode.apply(String, chars));
     // only NaN is not equal to itself among numbers
     if (parsed === parsed) {
       result._ = parsed;
@@ -268,15 +271,46 @@ export function parseNumber(
   return parseError("Expected number", index);
 }
 
-const doCompileBufferDecoder = (
-  descriptor: Descriptor<any>,
+const hex = (code: number) => `0x${code.toString(16)}`;
+
+function doCompileBufferDecoder(
+  descriptor: DescriptorType,
   accept: (value: string) => string,
   abort: () => string
-): string => {
-  if (descriptor.kind === "primitive") {
+): string {
+  if (descriptor.kind === "array") {
+    const id = `arr${String(Math.random()).slice(2, 8)}`;
+    return `
+      if (index >= buffer.length || buffer[index] !== ${hex(
+        OPEN_SQUARE_BRACE
+      )}) {
+        ${abort()}
+      }
+      ++index;
+      var ${id} = [];
+      while (true) {
+        ${doCompileBufferDecoder(
+          descriptor.value,
+          value => `${id}.push(${value});`,
+          abort
+        )}
+        if (index >= buffer.length || buffer[index] !== ${hex(COMMA)}) {
+          break;
+        }
+        ++index;
+      }
+      if (index >= buffer.length || buffer[index] !== ${hex(
+        CLOSE_SQUARE_BRACE
+      )}) {
+        ${abort()}
+      }
+      ++index;
+      ${accept(id)}
+    `;
+  } else if (descriptor.kind === "primitive") {
     if (descriptor.value === "boolean") {
       return `
-        if ((i = parseBoolean(b, i, booleanResult)) === -1) {
+        if ((index = parseBoolean(buffer, index, booleanResult)) === -1) {
           ${abort()}
         } else {
           ${accept("booleanResult._")}
@@ -284,7 +318,7 @@ const doCompileBufferDecoder = (
       `;
     } else if (descriptor.value === "null") {
       return `
-        if ((i = parseNull(b, i)) === -1) {
+        if ((index = parseNull(buffer, index)) === -1) {
           ${abort()}
         } else {
           ${accept("null")}
@@ -292,7 +326,7 @@ const doCompileBufferDecoder = (
       `;
     } else if (descriptor.value === "number") {
       return `
-        if ((i = parseNumber(b, i, numberResult)) === -1) {
+        if ((index = parseNumber(buffer, index, numberResult)) === -1) {
           ${abort()}
         } else {
           ${accept("numberResult._")}
@@ -301,20 +335,19 @@ const doCompileBufferDecoder = (
     }
   }
   throw new TypeError(`descriptor ${descriptor.kind} not supported yet`);
-};
+}
 
 export const compileBufferDecoder = <T>(
   descriptor: Descriptor<T>
 ): BufferDecoder<T> => {
-  const body = `return function decode (b) {
-    var i = 0;
+  const body = `return function decode (buffer) {
+    var index = 0;
     ${doCompileBufferDecoder(
       descriptor,
-      value => `return [i, ${value}];`,
+      value => `return [index, ${value}];`,
       () => "return [-1];"
     )};
   }`;
-  console.log(body);
   const wrapper = new Function(
     "parseBoolean",
     "booleanResult",
@@ -332,11 +365,10 @@ export const compileBufferDecoder = <T>(
   );
 };
 
-export const decodeBuffer = <T>(
-  descriptor: Descriptor<T>,
+export const runBufferDecoder = <T>(
+  decoder: BufferDecoder<T>,
   buffer: Buffer | Uint8Array
 ) => {
-  const decoder = compileBufferDecoder(descriptor);
   lastErrorIndex = -1;
   lastErrorMessage = "";
   const [index, result] = decoder(buffer);
@@ -350,4 +382,11 @@ export const decodeBuffer = <T>(
   }
 
   return result;
+};
+
+export const decodeBuffer = <T>(
+  descriptor: Descriptor<T>,
+  buffer: Buffer | Uint8Array
+) => {
+  return runBufferDecoder(compileBufferDecoder(descriptor), buffer);
 };

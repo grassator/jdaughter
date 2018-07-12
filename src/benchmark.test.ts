@@ -1,20 +1,19 @@
 import * as Benchmark from "benchmark";
 import { strict as assert } from "assert";
-import { parseNumber } from "./index";
+import * as D from "./index";
 
 const suite = new Benchmark.Suite();
 
-const data = 123.465e9;
+const data = [12, 34, 56];
 
 const stringified = JSON.stringify(data);
 const buffered = Buffer.from(stringified, "utf8");
-const numberResult = { _: 0 };
-const booleanResult = { _: false };
 
-function parse(buffer: Buffer): number {
-  parseNumber(buffer, 0, numberResult);
-  return numberResult._;
-}
+const descriptor = D.array(D.number);
+const bufferDecoder = D.compileBufferDecoder(descriptor);
+const parse = (buffer: Buffer) => {
+  return D.runBufferDecoder(bufferDecoder, buffer);
+};
 
 describe("parsing", () => {
   it("should produce the same result", function() {

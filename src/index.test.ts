@@ -78,20 +78,15 @@ describe("jdaughter", () => {
         decodeBuffer(D.array(D.number), 32);
       }, TypeError);
     });
-    it("should throw when it is not an array of wrong elements", () => {
+    it("should throw when it is an array of wrong elements", () => {
       assert.throws(() => {
         decodeBuffer(D.array(D.number), ["foo", "bar"]);
       }, TypeError);
     });
-    it("should correctly modify path for reported errors", () => {
-      try {
-        decodeBuffer(D.array(D.string), ["foo", 42]);
-      } catch (e) {
-        assert.strictEqual(
-          e.message,
-          "Expected value at path `.1` to be string, got number"
-        );
-      }
+    it("should throw when it is not an array", () => {
+      assert.throws(() => {
+        decodeBuffer(D.array(D.number), 42);
+      }, TypeError);
     });
   });
   describe("object", () => {
