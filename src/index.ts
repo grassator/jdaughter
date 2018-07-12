@@ -193,7 +193,7 @@ type NumberResult = { _: number };
 let booleanResult: BooleanResult = { _: false };
 let numberResult: NumberResult = { _: 0.0 };
 
-function parseBoolean(
+export function parseBoolean(
   buffer: Buffer,
   index: number,
   result: BooleanResult
@@ -222,7 +222,7 @@ function parseBoolean(
   }
 }
 
-function parseNull(buffer: Buffer, index: number): number {
+export function parseNull(buffer: Buffer, index: number): number {
   if (
     buffer.length >= index + 4 /* length of word "null" */ &&
     buffer[index] === LETTER_LOWERCASE_N &&
@@ -236,7 +236,7 @@ function parseNull(buffer: Buffer, index: number): number {
   }
 }
 
-function parseNumber(
+export function parseNumber(
   buffer: Buffer,
   index: number,
   result: NumberResult
