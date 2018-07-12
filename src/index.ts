@@ -3,6 +3,8 @@ const OPEN_CURLY_BRACE = 0x7b;
 const CLOSE_CURLY_BRACE = 0x7d;
 const COLON = 0x3a;
 const MINUS = 0x2d;
+const PLUS = 0x2b;
+const DOT = 0x2e;
 
 const NUMBER_0 = 0x30;
 const NUMBER_1 = 0x31;
@@ -236,33 +238,30 @@ export function parseNull(buffer: Buffer, index: number): number {
   }
 }
 
+// TODO investigate if it is faster to do parse manually
+// complying with https://ecma-international.org/ecma-262/5.1/#sec-9.3.1
 export function parseNumber(
   buffer: Buffer,
   index: number,
   result: NumberResult
 ): number {
-  if (index < buffer.length) {
-    let multiplier = 1;
-    let base = 0;
-    if (buffer[index] === MINUS) {
-      ++index;
-      multiplier = -1;
-    }
-    if (index < buffer.length) {
-      if (buffer[index] === NUMBER_0) {
-        base = 0;
-        ++index;
-      } else if (buffer[index] >= NUMBER_1 && buffer[index] <= NUMBER_9) {
-        base = buffer[index] - NUMBER_0;
-        for (++index; index < buffer.length; ++index) {
-          if (buffer[index] >= NUMBER_0 && buffer[index] <= NUMBER_9) {
-            base = base * 10 + (buffer[index] - NUMBER_0);
-          } else {
-            break;
-          }
-        }
-      }
-      result._ = base * multiplier;
+  const chars = [];
+  while (
+    index < buffer.length &&
+    ((buffer[index] >= NUMBER_0 && buffer[index] <= NUMBER_9) ||
+      buffer[index] === DOT ||
+      buffer[index] === LETTER_LOWERCASE_E ||
+      buffer[index] === LETTER_UPPERCASE_E ||
+      buffer[index] === PLUS ||
+      buffer[index] === MINUS)
+  ) {
+    chars.push(buffer[index++]);
+  }
+  if (chars.length !== 0) {
+    const parsed = parseFloat(String.fromCharCode(...chars));
+    // only NaN is not equal to itself among numbers
+    if (parsed === parsed) {
+      result._ = parsed;
       return index;
     }
   }

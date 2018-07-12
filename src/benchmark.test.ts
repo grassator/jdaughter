@@ -4,7 +4,7 @@ import { parseNumber } from "./index";
 
 const suite = new Benchmark.Suite();
 
-const data = 1;
+const data = 123.465e9;
 
 const stringified = JSON.stringify(data);
 const buffered = Buffer.from(stringified, "utf8");
