@@ -268,32 +268,53 @@ export function parseNumber(
   return parseError("Expected number", index);
 }
 
-export const compileBufferDecoder = <T>(
-  descriptor: Descriptor<T>
-): BufferDecoder<T> => {
-  let main = "";
+const doCompileBufferDecoder = (
+  descriptor: Descriptor<any>,
+  accept: (value: string) => string,
+  abort: () => string
+): string => {
   if (descriptor.kind === "primitive") {
     if (descriptor.value === "boolean") {
-      main = `
-        if ((i = parseBoolean(b, i, booleanResult)) === -1) return false;
-        return [i, booleanResult._];
+      return `
+        if ((i = parseBoolean(b, i, booleanResult)) === -1) {
+          ${abort()}
+        } else {
+          ${accept("booleanResult._")}
+        }
       `;
     } else if (descriptor.value === "null") {
-      main = `
-        i = parseNull(b, i);
-        return [i, null]
+      return `
+        if ((i = parseNull(b, i)) === -1) {
+          ${abort()}
+        } else {
+          ${accept("null")}
+        }
       `;
     } else if (descriptor.value === "number") {
-      main = `
-        if ((i = parseNumber(b, i, numberResult)) === -1) return 0;
-        return [i, numberResult._];
+      return `
+        if ((i = parseNumber(b, i, numberResult)) === -1) {
+          ${abort()}
+        } else {
+          ${accept("numberResult._")}
+        }
       `;
     }
   }
+  throw new TypeError(`descriptor ${descriptor.kind} not supported yet`);
+};
+
+export const compileBufferDecoder = <T>(
+  descriptor: Descriptor<T>
+): BufferDecoder<T> => {
   const body = `return function decode (b) {
     var i = 0;
-    ${main};
+    ${doCompileBufferDecoder(
+      descriptor,
+      value => `return [i, ${value}];`,
+      () => "return [-1];"
+    )};
   }`;
+  console.log(body);
   const wrapper = new Function(
     "parseBoolean",
     "booleanResult",
