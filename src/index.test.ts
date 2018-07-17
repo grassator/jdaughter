@@ -46,8 +46,15 @@ describe("jdaughter", () => {
     });
   });
   describe("string", () => {
-    it("should correctly parse", () => {
+    it("should correctly parse ASCII strings", () => {
       assert.strictEqual(decodeBuffer(D.string, "foo"), "foo");
+    });
+    it("should correctly parse escape characters in strings", () => {
+      assert.strictEqual(decodeBuffer(D.string, '\t\n\r\f\\"'), '\t\n\r\f\\"');
+    });
+    it("should correctly parse unicode escape sequences in strings", () => {
+      const input = Buffer.from('"\\u014b\\u0022"', "utf8");
+      assert.strictEqual(D.decodeBuffer(D.string, input), "\u014b\u0022");
     });
     it("should throw when it does not parse", () => {
       assert.throws(() => {

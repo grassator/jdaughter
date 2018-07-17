@@ -8,6 +8,14 @@ const COMMA = 0x2c;
 const MINUS = 0x2d;
 const PLUS = 0x2b;
 const DOT = 0x2e;
+const BACKWARD_SLASH = 0x5c;
+const FORWARD_SLASH = 0x2f;
+
+const CARRIAGE_RETURN = 0xd;
+const LINE_FEED = 0xa;
+const TAB = 0x9;
+const BACKSPACE = 0x8;
+const FORM_FEED = 0xc;
 
 const NUMBER_0 = 0x30;
 const NUMBER_1 = 0x31;
@@ -194,9 +202,11 @@ const parseError = (message: string, index: number) => {
 
 type BooleanResult = { _: boolean };
 type NumberResult = { _: number };
+type StringResult = { _: string };
 
 let booleanResult: BooleanResult = { _: false };
 let numberResult: NumberResult = { _: 0.0 };
+let stringResult: StringResult = { _: "" };
 
 export function parseBoolean(
   buffer: Buffer,
@@ -239,6 +249,82 @@ export function parseNull(buffer: Buffer, index: number): number {
   } else {
     return parseError("Expected null", index);
   }
+}
+
+function parseHexCharCode(char: number): number {
+  if (char >= NUMBER_0 && char <= NUMBER_9) {
+    return char - NUMBER_0;
+  }
+  if (char >= LETTER_LOWERCASE_A && char <= LETTER_LOWERCASE_F) {
+    return char - LETTER_LOWERCASE_A + 10;
+  }
+  if (char >= LETTER_UPPERCASE_A && char <= LETTER_UPPERCASE_A) {
+    return char - LETTER_UPPERCASE_A + 10;
+  }
+  return -1;
+}
+
+export function parseString(
+  buffer: Buffer,
+  index: number,
+  result: StringResult
+): number {
+  const chars = [];
+  if (index < buffer.length && buffer[index] === DOUBLE_QUOTE) {
+    ++index;
+    while (index < buffer.length && buffer[index] !== DOUBLE_QUOTE) {
+      // Escape codes
+      if (buffer[index] === BACKWARD_SLASH) {
+        ++index;
+        if (index < buffer.length) {
+          switch (buffer[index]) {
+            case LETTER_LOWERCASE_N:
+              chars.push(LINE_FEED);
+              break;
+            case LETTER_LOWERCASE_R:
+              chars.push(CARRIAGE_RETURN);
+              break;
+            case LETTER_LOWERCASE_T:
+              chars.push(TAB);
+              break;
+            case DOUBLE_QUOTE:
+              chars.push(DOUBLE_QUOTE);
+              break;
+            case LETTER_LOWERCASE_F:
+              chars.push(FORM_FEED);
+              break;
+            case FORWARD_SLASH:
+              chars.push(FORWARD_SLASH);
+              break;
+            case BACKWARD_SLASH:
+              chars.push(BACKWARD_SLASH);
+              break;
+            case LETTER_LOWERCASE_U:
+              if (index + 4 < buffer.length) {
+                let a = parseHexCharCode(buffer[++index]);
+                let b = parseHexCharCode(buffer[++index]);
+                let c = parseHexCharCode(buffer[++index]);
+                let d = parseHexCharCode(buffer[++index]);
+                if (a !== -1 && b !== -1 && c !== -1 && d !== -1) {
+                  chars.push((a << 12) + (b << 8) + (c << 4) + d);
+                  break;
+                }
+              }
+              return parseError("Expected unicode escape sequence", index);
+          }
+        }
+        ++index;
+      } else {
+        // FIXME support codes > 128
+        chars.push(buffer[index]);
+        ++index;
+      }
+    }
+    ++index;
+    result._ = String.fromCharCode.apply(String, chars);
+    return index;
+  }
+  return parseError("Expected string", index);
 }
 
 // TODO investigate if it is faster to do parse manually
@@ -308,7 +394,15 @@ function doCompileBufferDecoder(
       ${accept(id)}
     `;
   } else if (descriptor.kind === "primitive") {
-    if (descriptor.value === "boolean") {
+    if (descriptor.value === "string") {
+      return `
+        if ((index = parseString(buffer, index, stringResult)) === -1) {
+          ${abort()}
+        } else {
+          ${accept("stringResult._")}
+        }
+      `;
+    } else if (descriptor.value === "boolean") {
       return `
         if ((index = parseBoolean(buffer, index, booleanResult)) === -1) {
           ${abort()}
@@ -353,6 +447,8 @@ export const compileBufferDecoder = <T>(
     "booleanResult",
     "parseNumber",
     "numberResult",
+    "parseString",
+    "stringResult",
     "parseNull",
     body
   );
@@ -361,6 +457,8 @@ export const compileBufferDecoder = <T>(
     booleanResult,
     parseNumber,
     numberResult,
+    parseString,
+    stringResult,
     parseNull
   );
 };
@@ -373,12 +471,12 @@ export const runBufferDecoder = <T>(
   lastErrorMessage = "";
   const [index, result] = decoder(buffer);
 
-  if (index !== buffer.length) {
-    throw new TypeError(`Expected EOF at ${lastErrorIndex}`);
-  }
-
   if (lastErrorIndex !== -1) {
     throw new TypeError(`${lastErrorMessage} at ${lastErrorIndex}`);
+  }
+
+  if (index !== buffer.length) {
+    throw new TypeError(`Expected EOF at ${lastErrorIndex}`);
   }
 
   return result;
