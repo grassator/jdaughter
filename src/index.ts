@@ -357,7 +357,12 @@ export function parseNumber(
   return parseError("Expected number", index);
 }
 
-const hex = (code: number) => `0x${code.toString(16)}`;
+function escapeComment(char: string) {
+  return JSON.stringify(char).slice(1, -1);
+}
+
+const hex = (code: number) =>
+  `0x${code.toString(16)} /* ${escapeComment(String.fromCodePoint(code))} */`;
 
 function doCompileBufferDecoder(
   descriptor: DescriptorType,
@@ -437,6 +442,50 @@ function doCompileBufferDecoder(
       } else {
         ${abort()}
       }
+    `;
+  } else if (descriptor.kind === "dictionary") {
+    const id = `dict${String(Math.random()).slice(2, 8)}`;
+    return `
+      if (index >= buffer.length || buffer[index] !== ${hex(
+        OPEN_CURLY_BRACE
+      )}) {
+        ${abort()}
+      }
+      ++index;
+      var ${id} = {};
+      var ${id}_key = "";
+      var ${id}_first = true;
+      while (index < buffer.length && (buffer[index] !== ${hex(
+        CLOSE_CURLY_BRACE
+      )} )) {
+        if (!${id}_first) {
+          if (buffer[index] === ${hex(COMMA)}) {
+            ++index;
+          } else {
+            ${abort()}
+          }
+        }
+        ${id}_first = false;
+        ${doCompileBufferDecoder(
+          {
+            kind: "primitive",
+            value: "string"
+          },
+          value => `${id}_key = ${value};`,
+          abort
+        )}
+        if (buffer[index] !== ${hex(COLON)}) {
+          ${abort()}
+        }
+        ++index;
+        ${doCompileBufferDecoder(
+          descriptor.value,
+          value => `${id}[${id}_key] = ${value};`,
+          abort
+        )}
+      }
+      ++index;
+      ${accept(id)}
     `;
   } else if (descriptor.kind === "array") {
     const id = `arr${String(Math.random()).slice(2, 8)}`;

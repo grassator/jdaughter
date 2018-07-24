@@ -184,16 +184,6 @@ describe("jdaughter", () => {
         decodeBuffer(D.dictionary(D.string, D.number), { foo: "bar" });
       }, TypeError);
     });
-    it("should correctly modify path for reported errors", () => {
-      try {
-        decodeBuffer(D.dictionary(D.string, D.number), { foo: "bar" });
-      } catch (e) {
-        assert.strictEqual(
-          e.message,
-          "Expected value at path `.foo` to be number, got string"
-        );
-      }
-    });
   });
   describe("either", () => {
     it("should not throw if the first option fails", () => {

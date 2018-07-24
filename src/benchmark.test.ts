@@ -9,19 +9,14 @@ const data = [];
 for (let i = 0; i < 100; ++i) {
   data.push({
     foo: Math.random() > 0.5,
-    bar: 42
+    bar: Math.random() > 0.5
   });
 }
 
 const stringified = JSON.stringify(data);
 const buffered = Buffer.from(stringified, "utf8");
 
-const descriptor = D.array(
-  D.object({
-    foo: D.boolean,
-    bar: D.number
-  })
-);
+const descriptor = D.array(D.dictionary(D.string, D.boolean));
 const bufferDecoder = D.compileBufferDecoder(descriptor);
 const parse = (buffer: Buffer) => {
   return D.runBufferDecoder(bufferDecoder, buffer);
