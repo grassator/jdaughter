@@ -364,7 +364,81 @@ function doCompileBufferDecoder(
   accept: (value: string) => string,
   abort: () => string
 ): string {
-  if (descriptor.kind === "array") {
+  if (descriptor.kind === "object") {
+    const id = `obj${String(Math.random()).slice(2, 8)}`;
+    return `
+      if (index >= buffer.length || buffer[index] !== ${hex(
+        OPEN_CURLY_BRACE
+      )}) {
+        ${abort()}
+      }
+      ++index;
+      var ${id}_key = "";
+      ${Object.keys(descriptor.properties)
+        .map(key => `var ${id}_property_${key};`)
+        .join("\n")}
+      ${Object.keys(descriptor.properties)
+        .map(key => `var ${id}_seen_${key} = false;`)
+        .join("\n")}
+      var ${id}_first = true;
+      while (index < buffer.length && (buffer[index] !== ${hex(
+        CLOSE_CURLY_BRACE
+      )} )) {
+        if (!${id}_first) {
+          if (buffer[index] === ${hex(COMMA)}) {
+            ++index;
+          } else {
+            ${abort()}
+          }
+        }
+        ${id}_first = false;
+        if (buffer[index] === ${hex(DOUBLE_QUOTE)}) {
+          ${doCompileBufferDecoder(
+            {
+              kind: "primitive",
+              value: "string"
+            },
+            value => `${id}_key = ${value}`,
+            abort
+          )}
+          if (buffer[index] !== ${hex(COLON)}) {
+            ${abort()}
+          }
+          ++index;
+          ${Object.keys(descriptor.properties)
+            .map(key => {
+              return `if (${id}_key === ${JSON.stringify(key)}) {
+              ${doCompileBufferDecoder(
+                descriptor.properties[key],
+                value => `${id}_property_${key} = ${value};`,
+                abort
+              )}
+              ${id}_seen_${key} = true;
+              continue;
+            }`;
+            })
+            .join("\n")}
+            // FIXME Support arbitrary properties
+            ${abort()}
+        } else {
+          ${abort()}
+        }
+      }
+      ++index;
+      if (${Object.keys(descriptor.properties)
+        .map(key => `${id}_seen_${key}`)
+        .concat(["true"])
+        .join(" && ")}) {
+        ${accept(`{
+          ${Object.keys(descriptor.properties)
+            .map(key => `${JSON.stringify(key)}: ${id}_property_${key}`)
+            .join(",\n")}
+        }`)}
+      } else {
+        ${abort()}
+      }
+    `;
+  } else if (descriptor.kind === "array") {
     const id = `arr${String(Math.random()).slice(2, 8)}`;
     return `
       if (index >= buffer.length || buffer[index] !== ${hex(

@@ -110,9 +110,23 @@ describe("jdaughter", () => {
         decodeBuffer(D.object({}), [1, 2]);
       }, TypeError);
     });
-    it("should support objects with fields", () => {
+    it("should support objects with a single field", () => {
       const expected = {
-        bar: [true, false],
+        bar: true
+      };
+      assert.deepStrictEqual(
+        decodeBuffer(
+          D.object({
+            bar: D.boolean
+          }),
+          expected
+        ),
+        expected
+      );
+    });
+    it("should support objects with multiple fields", () => {
+      const expected = {
+        bar: true,
         buzz: "fsdf",
         foo: 42
       };
@@ -120,7 +134,7 @@ describe("jdaughter", () => {
         decodeBuffer(
           D.object({
             foo: D.number,
-            bar: D.array(D.boolean),
+            bar: D.boolean,
             buzz: D.string
           }),
           expected
@@ -152,18 +166,6 @@ describe("jdaughter", () => {
         ),
         { buzz: "asdf" }
       );
-    });
-    it("should correctly modify path for reported errors", () => {
-      try {
-        decodeBuffer(D.object({ buzz: D.string }, name => `prefix_${name}`), {
-          prefix_buzz: null
-        });
-      } catch (e) {
-        assert.strictEqual(
-          e.message,
-          "Expected value at path `.prefix_buzz` to be string, got null"
-        );
-      }
     });
   });
   describe("dict", () => {

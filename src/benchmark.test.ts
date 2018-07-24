@@ -7,13 +7,21 @@ const suite = new Benchmark.Suite();
 const data = [];
 
 for (let i = 0; i < 100; ++i) {
-  data.push(String(Math.random()));
+  data.push({
+    foo: Math.random() > 0.5,
+    bar: 42
+  });
 }
 
 const stringified = JSON.stringify(data);
 const buffered = Buffer.from(stringified, "utf8");
 
-const descriptor = D.array(D.string);
+const descriptor = D.array(
+  D.object({
+    foo: D.boolean,
+    bar: D.number
+  })
+);
 const bufferDecoder = D.compileBufferDecoder(descriptor);
 const parse = (buffer: Buffer) => {
   return D.runBufferDecoder(bufferDecoder, buffer);
