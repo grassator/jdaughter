@@ -264,14 +264,26 @@ function parseHexCharCode(char: number): number {
   return -1;
 }
 
+class LazyString {
+  constructor(
+    private buffer: Buffer,
+    private startIndex: number,
+    private endIndex: number
+  ) {}
+  toString() {
+    return this.buffer.toString("utf8", this.startIndex, this.endIndex);
+  }
+}
+
 export function parseString(
   buffer: Buffer,
   index: number,
+  lazy: boolean,
   result: StringResult
 ): number {
-  const chars = [];
   if (index < buffer.length && buffer[index] === DOUBLE_QUOTE) {
     ++index;
+    const startIndex = index;
     while (index < buffer.length && buffer[index] !== DOUBLE_QUOTE) {
       // Escape codes
       if (buffer[index] === BACKWARD_SLASH) {
@@ -279,25 +291,12 @@ export function parseString(
         if (index < buffer.length) {
           switch (buffer[index]) {
             case LETTER_LOWERCASE_N:
-              chars.push(LINE_FEED);
-              break;
             case LETTER_LOWERCASE_R:
-              chars.push(CARRIAGE_RETURN);
-              break;
             case LETTER_LOWERCASE_T:
-              chars.push(TAB);
-              break;
             case DOUBLE_QUOTE:
-              chars.push(DOUBLE_QUOTE);
-              break;
             case LETTER_LOWERCASE_F:
-              chars.push(FORM_FEED);
-              break;
             case FORWARD_SLASH:
-              chars.push(FORWARD_SLASH);
-              break;
             case BACKWARD_SLASH:
-              chars.push(BACKWARD_SLASH);
               break;
             case LETTER_LOWERCASE_U:
               if (index + 4 < buffer.length) {
@@ -306,7 +305,6 @@ export function parseString(
                 let c = parseHexCharCode(buffer[++index]);
                 let d = parseHexCharCode(buffer[++index]);
                 if (a !== -1 && b !== -1 && c !== -1 && d !== -1) {
-                  chars.push((a << 12) + (b << 8) + (c << 4) + d);
                   break;
                 }
               }
@@ -315,13 +313,11 @@ export function parseString(
         }
         ++index;
       } else {
-        // FIXME support codes > 128
-        chars.push(buffer[index]);
         ++index;
       }
     }
+    result._ = new LazyString(buffer, startIndex, index) as any;
     ++index;
-    result._ = String.fromCharCode.apply(String, chars);
     return index;
   }
   return parseError("Expected string", index);
@@ -519,7 +515,7 @@ function doCompileBufferDecoder(
   } else if (descriptor.kind === "primitive") {
     if (descriptor.value === "string") {
       return `
-        if ((index = parseString(buffer, index, stringResult)) === -1) {
+        if ((index = parseString(buffer, index, true, stringResult)) === -1) {
           ${abort()}
         } else {
           ${accept("stringResult._")}
